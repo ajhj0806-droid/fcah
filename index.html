@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08c)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08d)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -196,7 +196,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08c · papéis de acesso</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08d · criar usuário</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -1758,7 +1758,7 @@ const CAD_DEF={grupos:{table:'fcah_grupo',title:'Grupos de contas',cache:'grupos
 function empresaOptions(sel){return '<option value="">— sem empresa —</option>'+(G.empresas||[]).slice().sort((a,b)=>String(a.nome).localeCompare(String(b.nome))).map(e=>`<option value="${e.id}" ${e.id==sel?'selected':''}>${esc(e.nome)}</option>`).join('');}
 function renderCad(){
   if(!$('#cadTbl'))return; const def=CAD_DEF[CAD_SUB]; $('#cadTitle').textContent=def.title;
-  const bn=$('#btnNovoCad'); if(bn) bn.style.display=(CAD_SUB==='usuarios')?'none':'';
+  const bn=$('#btnNovoCad'); if(bn){ if(CAD_SUB==='usuarios'){ bn.style.display=PERM.usuarios?'':'none'; bn.textContent='＋ Novo usuário'; } else { bn.style.display=''; bn.textContent='＋ Novo'; } }
   const bc=$('#btnRegrasClean'); if(bc) bc.style.display=(CAD_SUB==='regras')?'':'none';
   const bv=$('#btnRegrasView'); if(bv){ bv.style.display=(CAD_SUB==='regras')?'':'none'; bv.textContent=REGRAS_VIEW==='palavra'?'👁 Ver por conta':'👁 Ver por palavra'; }
   if(!SB){semDB('#cadTbl');return;}
@@ -1863,6 +1863,43 @@ async function salvarCad(it){
   if(error){toast('Erro: '+error.message);return false;}
   await loadGestao();fillGestaoSelects();renderCad();renderLanc();renderCaixaGer();toast('Salvo ✓');return true;
 }
+function formNovoUsuario(){
+  const isSuper = AUTH_PROFILE && AUTH_PROFILE.tipo==='superadmin';
+  const empSel = isSuper ? `<div class="fld full"><label>Empresa</label><select id="nu_empresa">${empresaOptions(AUTH_PROFILE&&AUTH_PROFILE.empresa_id)}</select></div>` : '';
+  const tipos = isSuper ? ['admin','operador','visualizador','superadmin'] : ['admin','operador','visualizador'];
+  return `<div class="form-grid">
+    <div class="fld full"><label>Nome</label><input type="text" id="nu_nome"></div>
+    <div class="fld full"><label>E-mail (será o login)</label><input type="email" id="nu_email"></div>
+    ${empSel}
+    <div class="fld"><label>Tipo / permissão</label><select id="nu_tipo">${tipos.map(t=>`<option value="${t}">${esc(ROLE_LABEL[t]||t)}</option>`).join('')}</select></div>
+    <div class="fld"><label>Senha provisória (opcional)</label><input type="text" id="nu_senha" placeholder="vazio = gerar automática"></div>
+    <div class="hint full">O login é criado <b>já ativo</b>. Anote a senha provisória e repasse à pessoa — ela pode trocá-la depois.</div>
+  </div>`;
+}
+function abrirNovoUsuario(){ openModal('Novo usuário', formNovoUsuario(), salvarNovoUsuario); }
+async function salvarNovoUsuario(){
+  const nome=($('#nu_nome').value||'').trim(), email=($('#nu_email').value||'').trim();
+  const tipo=$('#nu_tipo').value, senha=($('#nu_senha')&&$('#nu_senha').value)||'';
+  const empEl=$('#nu_empresa'); const empresa_id = empEl ? (+empEl.value||null) : null;
+  if(!nome||!email){ toast('Informe nome e e-mail'); return false; }
+  const sv=$('#modalSave'); if(sv) sv.textContent='Criando…';
+  let data,error;
+  try{ ({data,error}=await SB.functions.invoke('criar_usuario',{body:{nome,email,tipo,senha,empresa_id}})); }
+  catch(e){ error=e; }
+  if(sv) sv.textContent='Salvar';
+  if(error){ let msg=error.message||'falha'; try{ const c=await error.context.json(); if(c&&c.error)msg=c.error; }catch(e){} toast('Erro: '+msg); return false; }
+  if(data&&data.error){ toast('Erro: '+data.error); return false; }
+  await loadGestao(); renderCad();
+  const body=$('#modalBody');
+  if(body){ body.innerHTML=`<div class="form-grid">
+    <div class="hint full" style="border-color:#16a34a;color:var(--tx)"><b>✓ Usuário criado.</b> Copie os dados abaixo e repasse à pessoa.</div>
+    <div class="fld full"><label>E-mail (login)</label><input type="text" readonly value="${esc(data.email)}" onclick="this.select()"></div>
+    <div class="fld full"><label>Senha provisória</label><input type="text" readonly value="${esc(data.senha)}" onclick="this.select()" style="font-weight:700"></div>
+    <div class="hint full">A pessoa entra em <b>${esc(location.host)}</b> com esses dados.</div></div>`; }
+  if(sv) sv.style.display='none';
+  const bc=$('#modalCancel'); if(bc) bc.textContent='Fechar';
+  return false;
+}
 async function excluirCad(id){
   const def=CAD_DEF[CAD_SUB]; if(!confirm('Excluir este registro?'))return;
   const {error}=await SB.from(def.table).delete().eq('id',id);
@@ -1906,7 +1943,7 @@ function wireGestao(){
   $('#cgTbl').addEventListener('click',cgCellClick);
   if($('#slBM')){ $('#slBM').onchange=renderSimLan; $('#slBY').onchange=renderSimLan; $('#slSM').onchange=slResumoUpd; $('#slSY').onchange=slResumoUpd; $('#slN').oninput=slResumoUpd; $('#slGerar').onclick=simLanGerar; }
   $('#cadSubtabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$$('#cadSubtabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');CAD_SUB=b.dataset.s;renderCad();});
-  $('#btnNovoCad').onclick=()=>abrirFormCad();
+  $('#btnNovoCad').onclick=()=> (CAD_SUB==='usuarios' ? abrirNovoUsuario() : abrirFormCad());
   $('#btnRegrasClean')&&($('#btnRegrasClean').onclick=resolverRegras);
   $('#btnRegrasView')&&($('#btnRegrasView').onclick=()=>{REGRAS_VIEW=REGRAS_VIEW==='palavra'?'conta':'palavra';renderCad();});
   $('#cadTbl').addEventListener('click',cadTblClick);
