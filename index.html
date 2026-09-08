@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08b)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08c)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -139,6 +139,31 @@ td.acts{white-space:nowrap;text-align:right}
 </style>
 </head>
 <body>
+<style id="permStyle">
+/* Papéis: esconder controles de escrita para quem não pode */
+/* Sem permissão de LANÇAMENTOS/SIMULADORES (visualizador) */
+body.perm-no-lanc #btnNovoLanc,
+body.perm-no-lanc #btnImport,
+body.perm-no-lanc #btnDelFut,
+body.perm-no-lanc #v-lanc .acts,
+body.perm-no-lanc #drillNovo,
+body.perm-no-lanc #slGerar,
+body.perm-no-lanc #v-simlan .acts,
+body.perm-no-lanc #simSalvar,
+body.perm-no-lanc #simNovoProd,
+body.perm-no-lanc #simNovoTrib,
+body.perm-no-lanc #simNovaDesp,
+body.perm-no-lanc #v-sim .acts,
+body.perm-no-lanc [data-dact],
+body.perm-no-lanc [data-simact],
+body.perm-no-lanc [data-sact],
+body.perm-no-lanc [data-delcen]{ display:none !important; }
+/* Sem permissão de CADASTROS (operador, visualizador) */
+body.perm-no-cad #btnNovoCad,
+body.perm-no-cad #btnRegrasView,
+body.perm-no-cad #btnRegrasClean,
+body.perm-no-cad #v-cad .acts{ display:none !important; }
+</style>
 <div id="authGate" hidden style="position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px">
   <div class="panel" style="width:380px;max-width:94vw">
     <div style="text-align:center;margin-bottom:16px"><div class="logo" style="margin:0 auto 8px">FC</div><div style="font-size:20px;font-weight:800">FCAH · Financeiro</div><div class="muted small" id="agHead">Acesse com sua conta</div></div>
@@ -171,7 +196,7 @@ td.acts{white-space:nowrap;text-align:right}
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08b · login corrigido</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08c · papéis de acesso</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -828,6 +853,22 @@ function showAuthGate(mode){ const g=$('#authGate'); if(!g)return; g.hidden=fals
   $('#agLogin').hidden = mode!=='login'; $('#agSignup').hidden = mode!=='signup'; $('#agPending').hidden = mode!=='pending';
   agMsg(''); if(mode==='login'){ const e=$('#agEmail'); if(e)e.focus(); } }
 function hideAuthGate(){ const g=$('#authGate'); if(g){ g.hidden=true; g.style.display='none'; } }
+/* ---- Papéis de acesso (permissões por tipo de usuário) ---- */
+const PERM={ver:true,lanc:false,cad:false,usuarios:false,empresas:false};
+function computePerm(tipo){
+  tipo=String(tipo||'');
+  PERM.empresas = tipo==='superadmin';
+  PERM.usuarios = tipo==='superadmin'||tipo==='admin';
+  PERM.cad      = tipo==='superadmin'||tipo==='admin';
+  PERM.lanc     = tipo==='superadmin'||tipo==='admin'||tipo==='operador';
+}
+function applyPerms(){
+  document.body.classList.toggle('perm-no-lanc', !PERM.lanc);
+  document.body.classList.toggle('perm-no-cad',  !PERM.cad);
+  document.querySelectorAll('#cadSubtabs [data-s="usuarios"]').forEach(b=>{ b.hidden=!PERM.usuarios; });
+  document.querySelectorAll('#cadSubtabs [data-s="empresas"]').forEach(b=>{ b.hidden=!PERM.empresas; });
+}
+const ROLE_LABEL={superadmin:'superadmin',admin:'administrador',operador:'operador',visualizador:'visualizador'};
 function traduzAuthErr(m){ m=String(m||'').trim();
   if(!m) return 'Não foi possível entrar (sem detalhes do servidor). Tente de novo em instantes.';
   if(/Invalid login credentials/i.test(m)) return 'E-mail ou senha inválidos.';
@@ -850,11 +891,10 @@ async function afterLogin(user){
   hideAuthGate(); setDB(true,'Supabase conectado');
   await T(loadGestao(),'carregar cadastros/lançamentos'); fillGestaoSelects(); renderGestao();
   await T(loadSim(),'carregar simulador'); renderSim();
+  computePerm(prof.tipo); applyPerms();
   showUserBadge(prof);
-  const isSA=prof.tipo==='superadmin';
-  document.querySelectorAll('#cadSubtabs [data-sa]').forEach(b=>{ b.hidden=!isSA; });
 }
-function showUserBadge(p){ const b=$('#userBadge'); if(b){ b.hidden=false; b.innerHTML=esc(p.nome||p.email)+' · <b>'+esc(empresaNome(p.empresa_id))+'</b>'+(p.tipo==='superadmin'?' <span class="tag proj">superadmin</span>':''); }
+function showUserBadge(p){ const b=$('#userBadge'); if(b){ b.hidden=false; b.innerHTML=esc(p.nome||p.email)+' · <b>'+esc(empresaNome(p.empresa_id))+'</b> <span class="tag proj">'+esc(ROLE_LABEL[p.tipo]||p.tipo||'—')+'</span>'; }
   const lo=$('#btnLogout'); if(lo)lo.hidden=false; }
 async function doLogin(){ const email=($('#agEmail').value||'').trim(), senha=$('#agSenha').value||'';
   if(!email||!senha){ agMsg('Informe e-mail e senha.'); return; } agMsg('Entrando…');
