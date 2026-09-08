@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08d)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08e)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -196,7 +196,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08d · criar usuário</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08e · fluxo ordenado</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -1660,13 +1660,13 @@ function renderCaixaGer(){
     const ga=gmap[g.id]||new Array(12).fill(0); const gc=gcnt[g.id]||new Array(12).fill(0); const gt=sumA(ga);
     h+=`<tr class="grp"><td>${esc(g.nome)}</td>${ga.map((v,m)=>cgc(v,'grupo',g.id,m,gc[m])).join('')}${cgc(gt,'grupo',g.id,'all',sumA(gc))}</tr>`;
     if(modo==='conta'){
-      G.contas.filter(c=>c.grupo_id===g.id).forEach(c=>{ const ca=cmap[c.id]; if(!ca)return; const cc=ccnt[c.id]||new Array(12).fill(0); const ct=sumA(ca); if(ct===0&&!ca.some(v=>v!==0)&&!cc.some(n=>n>0))return;
+      G.contas.filter(c=>c.grupo_id===g.id).sort((a,b)=>(a.ordem||0)-(b.ordem||0) || String(a.nome||'').localeCompare(String(b.nome||''),'pt',{sensitivity:'base'})).forEach(c=>{ const ca=cmap[c.id]; if(!ca)return; const cc=ccnt[c.id]||new Array(12).fill(0); const ct=sumA(ca); if(ct===0&&!ca.some(v=>v!==0)&&!cc.some(n=>n>0))return;
         h+=`<tr><td style="padding-left:22px">${esc(c.nome)}</td>${ca.map((v,m)=>cgc(v,'conta',c.id,m,cc[m])).join('')}${cgc(ct,'conta',c.id,'all',sumA(cc))}</tr>`; });
     }
   });
   if(semGrupoContas.size && (semGrupoArr.some(v=>v!==0)||semGrupoCnt.some(n=>n>0))){ const sgt=sumA(semGrupoArr);
     h+=`<tr class="grp"><td>(Sem grupo)</td>${semGrupoArr.map((v,m)=>cgc(v,'semgrupo',0,m,semGrupoCnt[m])).join('')}${cgc(sgt,'semgrupo',0,'all',sumA(semGrupoCnt))}</tr>`;
-    if(modo==='conta'){ [...semGrupoContas].forEach(cid=>{ const ca=cmap[cid]; const cc=ccnt[cid]||new Array(12).fill(0); const ct=sumA(ca); if(ct===0&&!ca.some(v=>v!==0)&&!cc.some(n=>n>0))return;
+    if(modo==='conta'){ [...semGrupoContas].map(cid=>G.contas.find(c=>c.id===cid)||{id:cid,nome:ctaNome(cid),ordem:0}).sort((a,b)=>(a.ordem||0)-(b.ordem||0) || String(a.nome||'').localeCompare(String(b.nome||''),'pt',{sensitivity:'base'})).forEach(c0=>{ const cid=c0.id; const ca=cmap[cid]; const cc=ccnt[cid]||new Array(12).fill(0); const ct=sumA(ca); if(ct===0&&!ca.some(v=>v!==0)&&!cc.some(n=>n>0))return;
       h+=`<tr><td style="padding-left:22px">${esc(ctaNome(cid))}</td>${ca.map((v,m)=>cgc(v,'conta',cid,m,cc[m])).join('')}${cgc(ct,'conta',cid,'all',sumA(cc))}</tr>`; }); } }
   const semTot=sumA(semArr);
   if(semArr.some(v=>v!==0)||semCnt.some(n=>n>0)) h+=`<tr class="grp"><td>Lançamentos sem conta</td>${semArr.map((v,m)=>cgc(v,'semconta',0,m,semCnt[m])).join('')}${cgc(semTot,'semconta',0,'all',sumA(semCnt))}</tr>`;
