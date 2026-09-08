@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08b)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -171,7 +171,7 @@ td.acts{white-space:nowrap;text-align:right}
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08 · login + multiempresa</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08b · login corrigido</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -824,10 +824,10 @@ async function initDB(){
   }catch(e){ showAuthGate('login'); }
 }
 function agMsg(t){ const el=$('#agMsg'); if(!el)return; el.textContent=t||''; el.style.cssText='margin-top:12px;text-align:center;min-height:18px;color:var(--amber);'+(t?'padding:8px 10px;border:1px solid var(--amber);border-radius:8px;background:rgba(245,158,11,.10);font-weight:600':''); }
-function showAuthGate(mode){ const g=$('#authGate'); if(!g)return; g.hidden=false;
+function showAuthGate(mode){ const g=$('#authGate'); if(!g)return; g.hidden=false; g.style.display='flex';
   $('#agLogin').hidden = mode!=='login'; $('#agSignup').hidden = mode!=='signup'; $('#agPending').hidden = mode!=='pending';
   agMsg(''); if(mode==='login'){ const e=$('#agEmail'); if(e)e.focus(); } }
-function hideAuthGate(){ const g=$('#authGate'); if(g)g.hidden=true; }
+function hideAuthGate(){ const g=$('#authGate'); if(g){ g.hidden=true; g.style.display='none'; } }
 function traduzAuthErr(m){ m=String(m||'').trim();
   if(!m) return 'Não foi possível entrar (sem detalhes do servidor). Tente de novo em instantes.';
   if(/Invalid login credentials/i.test(m)) return 'E-mail ou senha inválidos.';
