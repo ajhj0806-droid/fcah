@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08i)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08j)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -197,7 +197,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08i · fluxo e regras</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08j · conta fora do fluxo visível</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -1682,6 +1682,9 @@ function renderCaixaGer(){
     if(gId!=null){ if(!gmap[gId]){gmap[gId]=new Array(12).fill(0);gcnt[gId]=new Array(12).fill(0);} gmap[gId][mo]+=v; if(has)gcnt[gId][mo]++; } else { semGrupoContas.add(l.conta_id); }
     if(!cmap[l.conta_id]){cmap[l.conta_id]=new Array(12).fill(0);ccnt[l.conta_id]=new Array(12).fill(0);} cmap[l.conta_id][mo]+=v; if(has)ccnt[l.conta_id][mo]++; });
   const semGrupoArr=new Array(12).fill(0); const semGrupoCnt=new Array(12).fill(0); semGrupoContas.forEach(cid=>{cmap[cid].forEach((v,i)=>semGrupoArr[i]+=v); (ccnt[cid]||[]).forEach((v,i)=>semGrupoCnt[i]+=v);});
+  // contas "fora do fluxo": exibidas (marcadas), mas NÃO entram em nenhum total (grupo/mês/acumulado/KPIs)
+  G.lanc.forEach(l=>{ if(!foraFluxo(l))return; const mo=winIdx(l); if(mo==null)return; const v=val(l); const has=v!==0;
+    if(!cmap[l.conta_id]){cmap[l.conta_id]=new Array(12).fill(0);ccnt[l.conta_id]=new Array(12).fill(0);} cmap[l.conta_id][mo]+=v; if(has)ccnt[l.conta_id][mo]++; });
   const colTot=new Array(12).fill(0); Object.values(gmap).forEach(a=>a.forEach((v,i)=>colTot[i]+=v)); semArr.forEach((v,i)=>colTot[i]+=v); semGrupoArr.forEach((v,i)=>colTot[i]+=v);
   const colCnt=new Array(12).fill(0); Object.values(gcnt).forEach(a=>a.forEach((v,i)=>colCnt[i]+=v)); semCnt.forEach((v,i)=>colCnt[i]+=v); semGrupoCnt.forEach((v,i)=>colCnt[i]+=v);
   const sumA=a=>a.reduce((s,v)=>s+v,0);
@@ -1697,8 +1700,9 @@ function renderCaixaGer(){
     const ga=gmap[g.id]||new Array(12).fill(0); const gc=gcnt[g.id]||new Array(12).fill(0); const gt=sumA(ga);
     h+=`<tr class="grp"><td>${esc(g.nome)}</td>${ga.map((v,m)=>cgc(v,'grupo',g.id,m,gc[m])).join('')}${cgc(gt,'grupo',g.id,'all',sumA(gc))}</tr>`;
     if(modo==='conta'){
-      G.contas.filter(c=>c.grupo_id===g.id).sort((a,b)=>(a.ordem||0)-(b.ordem||0) || String(a.nome||'').localeCompare(String(b.nome||''),'pt',{sensitivity:'base'})).forEach(c=>{ const ca=cmap[c.id]; if(!ca)return; const cc=ccnt[c.id]||new Array(12).fill(0); const ct=sumA(ca); if(ct===0&&!ca.some(v=>v!==0)&&!cc.some(n=>n>0))return;
-        h+=`<tr><td style="padding-left:22px">${esc(c.nome)}</td>${ca.map((v,m)=>cgc(v,'conta',c.id,m,cc[m])).join('')}${cgc(ct,'conta',c.id,'all',sumA(cc))}</tr>`; });
+      G.contas.filter(c=>c.grupo_id===g.id).sort((a,b)=>(a.ordem||0)-(b.ordem||0) || String(a.nome||'').localeCompare(String(b.nome||''),'pt',{sensitivity:'base'})).forEach(c=>{ if(c.oculta)return; const ca=cmap[c.id]; if(!ca)return; const cc=ccnt[c.id]||new Array(12).fill(0); const ct=sumA(ca); if(ct===0&&!ca.some(v=>v!==0)&&!cc.some(n=>n>0))return;
+        const foraTag=c.fora_fluxo?' <span class="tag" style="background:rgba(148,163,184,.25);color:#64748b;font-weight:600" title="Esta conta não é somada no fluxo (grupo, total do mês e acumulado)">não calculada</span>':'';
+        h+=`<tr${c.fora_fluxo?' style="opacity:.75"':''}><td style="padding-left:22px">${esc(c.nome)}${foraTag}</td>${ca.map((v,m)=>cgc(v,'conta',c.id,m,cc[m])).join('')}${cgc(ct,'conta',c.id,'all',sumA(cc))}</tr>`; });
     }
   });
   if(semGrupoContas.size && (semGrupoArr.some(v=>v!==0)||semGrupoCnt.some(n=>n>0))){ const sgt=sumA(semGrupoArr);
