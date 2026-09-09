@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08h)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08i)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -197,7 +197,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08h · descrição 2 como fallback</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08i · fluxo e regras</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -971,7 +971,7 @@ function grupoOptions(sel){return G.grupos.map(g=>`<option value="${g.id}" ${g.i
 function contaOptions(sel){return G.contas.map(c=>`<option value="${c.id}" ${c.id==sel?'selected':''}>${esc(c.nome)}</option>`).join('');}
 const grpNat=id=>{const g=G.grupos.find(x=>x.id==id);return g&&g.natureza?g.natureza:'Despesa';};
 const ctaNat=cid=>{const c=G.contas.find(x=>x.id==cid);return c?grpNat(c.grupo_id):'Despesa';};
-function contaOptionsGrouped(sel){return G.grupos.slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0)).map(g=>{const cs=G.contas.filter(c=>c.grupo_id===g.id);if(!cs.length)return '';return `<optgroup label="${esc(g.nome)} · ${g.natureza||'Despesa'}">`+cs.map(c=>`<option value="${c.id}" ${c.id==sel?'selected':''}>${esc(c.nome)}</option>`).join('')+'</optgroup>';}).join('');}
+function contaOptionsGrouped(sel){return G.grupos.slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0)).map(g=>{const cs=G.contas.filter(c=>c.grupo_id===g.id).sort((a,b)=>(a.ordem||0)-(b.ordem||0) || String(a.nome||'').localeCompare(String(b.nome||''),'pt',{sensitivity:'base'}));if(!cs.length)return '';return `<optgroup label="${esc(g.nome)} · ${g.natureza||'Despesa'}">`+cs.map(c=>`<option value="${c.id}" ${c.id==sel?'selected':''}>${esc(c.nome)}</option>`).join('')+'</optgroup>';}).join('');}
 function meioOptions(sel){return '<option value="">— nenhum —</option>'+G.meios.map(m=>`<option value="${m.id}" ${m.id==sel?'selected':''}>${esc(m.nome)}</option>`).join('');}
 
 async function sbFetchAll(table){ let all=[],from=0; const page=1000; // busca TODAS as linhas (Supabase limita 1000/consulta)
@@ -1093,9 +1093,16 @@ async function salvarLanc(l){
   const conta=G.contas.find(x=>x.id===conta_id); const grupo_id=conta?conta.grupo_id:null; const tipo=grpNat(grupo_id);
   const data_compra=$('#fDataC').value||null, data_pagamento=$('#fDataP').value||null, descricao=$('#fDesc').value.trim();
   if(!valor||!conta_id){toast('Informe pelo menos o valor e a conta');return false;}
+  let learnedMsg='';
   if(l&&l.id){
     const {error}=await SB.from('fcah_lancamento_tx').update({tipo,valor,grupo_id,conta_id,meio_id,data_compra,data_pagamento,descricao}).eq('id',l.id);
     if(error){toast('Erro: '+error.message);return false;}
+    // item 4: ao TROCAR a conta de um lançamento, aprende uma regra (palavra distintiva → nova conta)
+    if(l.conta_id && conta_id && l.conta_id!==conta_id && descricao){
+      const kw=chooseLearnKeyword(descricao, conta_id, [], null);
+      if(kw){ const {error:re}=await SB.from('fcah_conta_regra').insert({palavra:kw.toLowerCase(),conta_id});
+        if(!re) learnedMsg=' · regra aprendida: “'+kw.toLowerCase()+'” → '+(conta?conta.nome:''); }
+    }
   }else{
     const modo=$('#fModo').value,N=Math.max(1,parseInt($('#fN').value)||1),lote=(crypto.randomUUID?crypto.randomUUID():String(Date.now()));
     const base=data_pagamento?new Date(data_pagamento+'T00:00:00'):new Date(); const cnt=modo==='unico'?1:N; const rows=[];
@@ -1104,7 +1111,7 @@ async function salvarLanc(l){
     const {error}=await SB.from('fcah_lancamento_tx').insert(rows);
     if(error){toast('Erro: '+error.message);return false;}
   }
-  await loadLanc();fillGestaoSelects();renderLanc();renderCaixaGer();toast('Lançamento salvo ✓');return true;
+  await loadGestao();await loadLanc();fillGestaoSelects();renderLanc();renderCaixaGer();toast('Lançamento salvo ✓'+learnedMsg);return true;
 }
 async function excluirLanc(id){ if(!confirm('Excluir este lançamento?'))return; const {error}=await SB.from('fcah_lancamento_tx').delete().eq('id',id); if(error){toast('Erro: '+error.message);return;} await loadLanc();renderLanc();renderCaixaGer();toast('Excluído'); }
 function excluirFuturos(){
@@ -1664,8 +1671,9 @@ function renderCaixaGer(){
   const perLbl=months[0].label+' – '+months[11].label;
   const winIdx=l=>{ if(!l.data_pagamento)return null; const k=(+String(l.data_pagamento).slice(0,4))+'-'+(+String(l.data_pagamento).slice(5,7)-1); return idxOf[k]!=null?idxOf[k]:null; };
   const val=l=>{ if(tipo==='Receita')return l.tipo==='Receita'?+l.valor:0; if(tipo==='Despesa')return l.tipo==='Despesa'?-(+l.valor):0; return l.tipo==='Receita'?+l.valor:-(+l.valor); };
-  const inWin=G.lanc.filter(l=>winIdx(l)!=null);
   const contaById={}; G.contas.forEach(c=>contaById[c.id]=c);
+  const foraFluxo=l=>l.conta_id!=null && contaById[l.conta_id] && contaById[l.conta_id].fora_fluxo;
+  const inWin=G.lanc.filter(l=>winIdx(l)!=null && !foraFluxo(l));
   const gmap={},cmap={}; const gcnt={},ccnt={}; const semArr=new Array(12).fill(0); const semCnt=new Array(12).fill(0); const semGrupoContas=new Set(); // grupo derivado da CONTA atual
   G.grupos.forEach(g=>{gmap[g.id]=new Array(12).fill(0);gcnt[g.id]=new Array(12).fill(0);});
   inWin.forEach(l=>{ const mo=winIdx(l); const v=val(l); const has=v!==0;
@@ -1701,8 +1709,10 @@ function renderCaixaGer(){
   if(semArr.some(v=>v!==0)||semCnt.some(n=>n>0)) h+=`<tr class="grp"><td>Lançamentos sem conta</td>${semArr.map((v,m)=>cgc(v,'semconta',0,m,semCnt[m])).join('')}${cgc(semTot,'semconta',0,'all',sumA(semCnt))}</tr>`;
   const gtTot=sumA(colTot);
   h+=`<tr class="tot"><td>Total do mês</td>${colTot.map((v,m)=>cgc(v,'all',0,m,colCnt[m])).join('')}${cgc(gtTot,'all',0,'all',sumA(colCnt))}</tr>`;
-  let acc=0; const accArr=colTot.map(v=>acc+=v);
-  h+=`<tr class="tot"><td>Acumulado</td>${accArr.map(v=>`<td class="money ${v<0?'neg':'pos'}">${fmt.format(v)}</td>`).join('')}<td class="money ${acc<0?'neg':'pos'}">${fmt.format(acc)}</td></tr>`;
+  const winStartAbs=months[0].y*12+months[0].m; let saldoAnterior=0;
+  G.lanc.forEach(l=>{ if(!l.data_pagamento||foraFluxo(l))return; const ly=+String(l.data_pagamento).slice(0,4), lm=+String(l.data_pagamento).slice(5,7)-1; if((ly*12+lm)<winStartAbs) saldoAnterior+=val(l); });
+  let acc=saldoAnterior; const accArr=colTot.map(v=>acc+=v);
+  h+=`<tr class="tot"><td title="Inclui o saldo acumulado de antes de ${esc(months[0].label)} (R$ ${fmt.format(saldoAnterior)})">Acumulado <span class="muted small">(inclui saldo anterior)</span></td>${accArr.map(v=>`<td class="money ${v<0?'neg':'pos'}">${fmt.format(v)}</td>`).join('')}<td class="money ${acc<0?'neg':'pos'}">${fmt.format(acc)}</td></tr>`;
   h+='</tbody>';$('#cgTbl').innerHTML=h;
 }
 // janela móvel de 12 meses a partir do mês/ano inicial selecionado
@@ -1868,7 +1878,7 @@ async function addRuleToConta(contaId){ const p=prompt('Nova palavra-chave para 
   await loadGestao(); renderCad(); toast('Palavra adicionada ✓'); }
 function formCad(it){ it=it||{};
   if(CAD_SUB==='grupos')return `<div class="form-grid"><div class="fld full"><label>Nome</label><input type="text" id="cf_nome" value="${esc(it.nome)}"></div><div class="fld"><label>Natureza (define Receita/Despesa das contas)</label><select id="cf_natureza"><option ${it.natureza==='Despesa'||!it.natureza?'selected':''}>Despesa</option><option ${it.natureza==='Receita'?'selected':''}>Receita</option></select></div><div class="fld"><label>Ordem</label><input type="number" id="cf_ordem" value="${it.ordem||0}"></div><div class="fld full"><label>Área / descrição</label><input type="text" id="cf_area" value="${esc(it.area)}"></div><div class="fld"><label>Ativo</label><select id="cf_ativo"><option value="true" ${it.ativo!==false?'selected':''}>Sim</option><option value="false" ${it.ativo===false?'selected':''}>Não</option></select></div></div>`;
-  if(CAD_SUB==='contas')return `<div class="form-grid"><div class="fld full"><label>Nome</label><input type="text" id="cf_nome" value="${esc(it.nome)}"></div><div class="fld"><label>Grupo</label><select id="cf_grupo">${grupoOptions(it.grupo_id)}</select></div><div class="fld"><label>Ordem</label><input type="number" id="cf_ordem" value="${it.ordem||0}"></div><div class="fld"><label>Oculta</label><select id="cf_oculta"><option value="false" ${!it.oculta?'selected':''}>Não</option><option value="true" ${it.oculta?'selected':''}>Sim</option></select></div><div class="fld"><label>Ativo</label><select id="cf_ativo"><option value="true" ${it.ativo!==false?'selected':''}>Sim</option><option value="false" ${it.ativo===false?'selected':''}>Não</option></select></div></div>`;
+  if(CAD_SUB==='contas')return `<div class="form-grid"><div class="fld full"><label>Nome</label><input type="text" id="cf_nome" value="${esc(it.nome)}"></div><div class="fld"><label>Grupo</label><select id="cf_grupo">${grupoOptions(it.grupo_id)}</select></div><div class="fld"><label>Ordem</label><input type="number" id="cf_ordem" value="${it.ordem||0}"></div><div class="fld"><label>Oculta</label><select id="cf_oculta"><option value="false" ${!it.oculta?'selected':''}>Não</option><option value="true" ${it.oculta?'selected':''}>Sim</option></select></div><div class="fld"><label>Não calcular no fluxo (ex.: Aplicação)</label><select id="cf_foraflux"><option value="false" ${!it.fora_fluxo?'selected':''}>Não</option><option value="true" ${it.fora_fluxo?'selected':''}>Sim</option></select></div><div class="fld"><label>Ativo</label><select id="cf_ativo"><option value="true" ${it.ativo!==false?'selected':''}>Sim</option><option value="false" ${it.ativo===false?'selected':''}>Não</option></select></div></div>`;
   if(CAD_SUB==='meios')return `<div class="form-grid"><div class="fld full"><label>Nome</label><input type="text" id="cf_nome" value="${esc(it.nome)}"></div><div class="fld"><label>Tipo</label><select id="cf_tipo">${['Pix','Dinheiro','Boleto','Transferência','Débito','Cartão de Crédito'].map(t=>`<option ${it.tipo===t?'selected':''}>${t}</option>`).join('')}</select></div><div class="fld"><label>Bandeira (cartão)</label><input type="text" id="cf_bandeira" value="${esc(it.bandeira)}"></div><div class="fld"><label>Dia de fechamento</label><input type="number" id="cf_fech" min="1" max="31" value="${it.dia_fechamento||''}"></div><div class="fld"><label>Dia de pagamento</label><input type="number" id="cf_pag" min="1" max="31" value="${it.dia_pagamento||''}"></div></div>`;
   if(CAD_SUB==='regras')return `<div class="form-grid"><div class="fld full"><label>Palavra-chave (aparece na descrição do lançamento)</label><input type="text" id="cf_palavra" value="${esc(it.palavra)}" placeholder="ex.: uber, ifood, posto, cemig"></div><div class="fld full"><label>Associar à conta</label><select id="cf_conta">${contaOptionsGrouped(it.conta_id)}</select></div><div class="hint full">Na importação, se a descrição contiver esta palavra, o lançamento é associado automaticamente a esta conta.</div></div>`;
   if(CAD_SUB==='empresas')return `<div class="form-grid"><div class="fld full"><label>Nome da empresa</label><input type="text" id="cf_nome" value="${esc(it.nome)}"></div><div class="fld"><label>CNPJ</label><input type="text" id="cf_cnpj" value="${esc(it.cnpj)}"></div><div class="fld"><label>Ativa</label><select id="cf_ativo"><option value="true" ${it.ativo!==false?'selected':''}>Sim</option><option value="false" ${it.ativo===false?'selected':''}>Não</option></select></div></div>`;
@@ -1880,7 +1890,7 @@ function abrirFormCad(it){ const isEdit=!!(it&&it.id);
 async function salvarCad(it){
   const def=CAD_DEF[CAD_SUB]; let payload={};
   if(CAD_SUB==='grupos'){ payload={nome:$('#cf_nome').value.trim(),natureza:$('#cf_natureza').value,area:$('#cf_area').value.trim()||null,ordem:+$('#cf_ordem').value||0,ativo:$('#cf_ativo').value==='true'}; }
-  else if(CAD_SUB==='contas'){ payload={nome:$('#cf_nome').value.trim(),grupo_id:+$('#cf_grupo').value||null,ordem:+$('#cf_ordem').value||0,oculta:$('#cf_oculta').value==='true',ativo:$('#cf_ativo').value==='true'}; }
+  else if(CAD_SUB==='contas'){ payload={nome:$('#cf_nome').value.trim(),grupo_id:+$('#cf_grupo').value||null,ordem:+$('#cf_ordem').value||0,oculta:$('#cf_oculta').value==='true',fora_fluxo:$('#cf_foraflux').value==='true',ativo:$('#cf_ativo').value==='true'}; }
   else if(CAD_SUB==='meios'){ payload={nome:$('#cf_nome').value.trim(),tipo:$('#cf_tipo').value,bandeira:$('#cf_bandeira').value.trim()||null,dia_fechamento:+$('#cf_fech').value||null,dia_pagamento:+$('#cf_pag').value||null}; }
   else if(CAD_SUB==='regras'){ payload={palavra:$('#cf_palavra').value.trim().toLowerCase(),conta_id:+$('#cf_conta').value||null}; if(!payload.palavra){toast('Informe a palavra-chave');return false;} if(!payload.conta_id){toast('Escolha a conta');return false;} }
   else if(CAD_SUB==='empresas'){ payload={nome:$('#cf_nome').value.trim(),cnpj:$('#cf_cnpj').value.trim()||null,ativo:$('#cf_ativo').value==='true'}; }
