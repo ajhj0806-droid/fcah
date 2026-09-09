@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08g)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08h)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -197,7 +197,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08g · excluir importação</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08h · descrição 2 como fallback</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -1244,7 +1244,9 @@ function buildTx(det, colOverride){
   const out=[],ignoradas=[];
   d.dataRows.forEach(r=>{
     const dp=normDate(r[d.dateIdx]);
-    const desc=[d.descIdx>=0?r[d.descIdx]:'', (d.descIdx2!=null&&d.descIdx2>=0)?r[d.descIdx2]:''].map(x=>String(x||'').trim()).filter(Boolean).join(' ');
+    const _d1=d.descIdx>=0?String(r[d.descIdx]==null?'':r[d.descIdx]).trim():'';
+    const _d2=(d.descIdx2!=null&&d.descIdx2>=0)?String(r[d.descIdx2]==null?'':r[d.descIdx2]).trim():'';
+    const desc=_d1||_d2; // usa a Descrição 2 só quando a Descrição 1 está vazia (espaço)
     let valor=0;
     if(d.credIdx>=0||d.debIdx>=0){ const cr=d.credIdx>=0?numVal(r[d.credIdx]):0, db=d.debIdx>=0?numVal(r[d.debIdx]):0; valor=(cr||0)-Math.abs(db||0); }
     else if(d.valorIdx>=0){ valor=numVal(r[d.valorIdx]); }
@@ -1323,7 +1325,7 @@ function importBankReview(){
   <details class="help" id="impDet" open style="margin-bottom:8px"><summary>Colunas detectadas / opções (ajuste se necessário)</summary><div class="form-grid" style="margin-top:8px">
     <div class="fld"><label>Data da compra</label><select id="ovData">${colOpts(det,o.dateIdx!=null?o.dateIdx:det.dateIdx,false)}</select></div>
     <div class="fld"><label>Descrição</label><select id="ovDesc">${colOpts(det,o.descIdx!=null?o.descIdx:det.descIdx,false)}</select></div>
-    <div class="fld"><label>Descrição — coluna 2 (opcional, concatena)</label><select id="ovDesc2">${colOpts(det,o.descIdx2!=null?o.descIdx2:-1,true)}</select></div>
+    <div class="fld"><label>Descrição — coluna 2 (usada só quando a Descrição 1 estiver vazia)</label><select id="ovDesc2">${colOpts(det,o.descIdx2!=null?o.descIdx2:-1,true)}</select></div>
     <div class="fld"><label>Valor</label><select id="ovValor">${colOpts(det,o.valorIdx!=null?o.valorIdx:det.valorIdx,false)}</select></div>
     <div class="fld"><label>&nbsp;</label><label style="display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid var(--amber);border-radius:8px;background:rgba(245,158,11,.10);font-weight:600;cursor:pointer"><input type="checkbox" id="ovInvert" ${o.invert?'checked':''} style="width:16px;height:16px"> ⇅ Inverter sinais dos valores (+ ↔ −)</label></div>
     <div class="fld full"><label style="display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid var(--accent);border-radius:8px;background:rgba(59,130,246,.10);font-weight:600;cursor:pointer"><input type="checkbox" id="impCartao" ${IMPB.card&&IMPB.card.on?'checked':''} style="width:16px;height:16px"> 💳 É fatura de Cartão de Crédito?</label></div>
