@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08e)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08f)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -196,7 +196,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08e · fluxo ordenado</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08f · recarregar associação</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -1314,6 +1314,7 @@ function importBankReview(){
     <div class="small muted" id="impResumo"></div>
     <div class="grow"></div>
     <label class="small" title="Marcado: grava os novos NOMES associados às CONTAS informadas nesta importação. Desmarcado: mantém as CONTAS e NOMES já gravados." style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="impAprender" checked> aprender regras&nbsp;<span style="opacity:.7">ⓘ</span></label>
+    <button class="btn sec" id="impReassoc" title="Refaz a associação das contas usando as colunas escolhidas (Descrição 1 e 2)">🔄 Recarregar associação</button>
     <button class="btn" id="impDoBtn">⭱ Importar</button>
   </div>
   <div class="hint" style="margin-bottom:8px">💡 <b>Aprender regras:</b> marcado → grava os novos nomes (palavras) associados às contas desta importação, para acertar automaticamente nas próximas; desmarcado → mantém as contas e nomes já gravados, sem criar novas regras.</div>
@@ -1326,6 +1327,7 @@ function importBankReview(){
   $('#impDataPag')&&($('#impDataPag').onchange=()=>{IMPB.dataPag=$('#impDataPag').value;});
   const cardChk=$('#impCartao'); if(cardChk)cardChk.onchange=()=>{ const f=$('#impCardFields'); if(f)f.style.display=cardChk.checked?'block':'none'; impRefreshPreview(); };
   $('#impDoBtn').onclick=importBankConfirm;
+  $('#impReassoc')&&($('#impReassoc').onclick=()=>{ impRefreshPreview(); toast('Associação recarregada com as colunas atuais ✓'); });
   impRefreshPreview();
 }
 // monta a lista "cartão → conta" (um seletor por final de cartão encontrado na fatura)
