@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08j)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08l)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -197,11 +197,12 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08j · conta fora do fluxo visível</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08l · seletor de empresa (superadmin)</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
     <span id="userBadge" class="small" style="margin-left:12px" hidden></span>
+    <select id="empSwitch" class="small" title="Empresa em visualização (somente superadmin)" hidden style="margin-left:8px;padding:3px 6px;border-radius:6px"></select>
     <button class="btn ghost" id="btnLogout" hidden style="margin-left:8px;padding:4px 10px">Sair</button>
     <button class="iconbtn" id="themebtn" title="Alternar tema">◑</button>
   </div>
@@ -513,10 +514,11 @@ function sumArr(a,f){return a.reduce((s,x)=>s+f(x),0);}
 /* ===== SIMULADOR DE MARGEM / PONTO DE EQUILÍBRIO ===== */
 const SIM={produtos:[],tributos:[],despesas:[]};
 async function loadSim(){ if(!SB)return;
+  const emp=authEmp(); const scope=q=>(emp!=null?q.eq('empresa_id',emp):q);
   const [p,t,d]=await Promise.all([
-    SB.from('fcah_sim_produto').select('*').order('id'),
-    SB.from('fcah_sim_tributo').select('*').order('id'),
-    SB.from('fcah_sim_despesa').select('*').order('id')]);
+    scope(SB.from('fcah_sim_produto').select('*')).order('id'),
+    scope(SB.from('fcah_sim_tributo').select('*')).order('id'),
+    scope(SB.from('fcah_sim_despesa').select('*')).order('id')]);
   SIM.produtos=p.data||[];SIM.tributos=t.data||[];SIM.despesas=d.data||[];
 }
 function computeSim(){
@@ -610,7 +612,7 @@ function simFormProd(p){ p=p||{};
     <div class="fld"><label>Unidade</label><input type="text" id="sp_un" value="${esc(p.unidade)}"></div>
   </div>`, async()=>{ const payload={nome:$('#sp_nome').value.trim(),tipo:$('#sp_tipo').value,moeda:$('#sp_moeda').value,valor_venda:parseNum($('#sp_valor').value),custo_unit:parseNum($('#sp_custo').value),qtd_padrao:parseNum($('#sp_qtd').value),unidade:$('#sp_un').value.trim()||null};
     if(!payload.nome){toast('Informe o nome');return false;} let e2;
-    if(p.id)({error:e2}=await SB.from('fcah_sim_produto').update(payload).eq('id',p.id)); else ({error:e2}=await SB.from('fcah_sim_produto').insert(payload));
+    if(p.id)({error:e2}=await SB.from('fcah_sim_produto').update(payload).eq('id',p.id)); else ({error:e2}=await SB.from('fcah_sim_produto').insert(withEmp(payload)));
     if(e2){toast('Erro: '+e2.message);return false;} SIM._cen=null;await loadSim();renderSim();toast('Salvo ✓');return true; });
 }
 function simFormTrib(t){ t=t||{};
@@ -620,7 +622,7 @@ function simFormTrib(t){ t=t||{};
     <div class="fld"><label>Incide em</label>${selTipo('st_tipo',t.tipo||'Venda',['Venda','Serviço','Ambos'])}</div>
   </div>`, async()=>{ const payload={nome:$('#st_nome').value.trim(),aliquota:parseNum($('#st_aliq').value),tipo:$('#st_tipo').value};
     if(!payload.nome){toast('Informe o nome');return false;} let e2;
-    if(t.id)({error:e2}=await SB.from('fcah_sim_tributo').update(payload).eq('id',t.id)); else ({error:e2}=await SB.from('fcah_sim_tributo').insert(payload));
+    if(t.id)({error:e2}=await SB.from('fcah_sim_tributo').update(payload).eq('id',t.id)); else ({error:e2}=await SB.from('fcah_sim_tributo').insert(withEmp(payload)));
     if(e2){toast('Erro: '+e2.message);return false;} SIM._cen=null;await loadSim();renderSim();toast('Salvo ✓');return true; });
 }
 function simFormDesp(d){ d=d||{};
@@ -632,18 +634,19 @@ function simFormDesp(d){ d=d||{};
     <div class="hint full">% incide sobre o faturamento do tipo. "Fixa" = valor em R$/mês independente da venda.</div>
   </div>`, async()=>{ const payload={nome:$('#sd_nome').value.trim(),modo:$('#sd_modo').value,valor:parseNum($('#sd_valor').value),tipo:$('#sd_tipo').value};
     if(!payload.nome){toast('Informe o nome');return false;} let e2;
-    if(d.id)({error:e2}=await SB.from('fcah_sim_despesa').update(payload).eq('id',d.id)); else ({error:e2}=await SB.from('fcah_sim_despesa').insert(payload));
+    if(d.id)({error:e2}=await SB.from('fcah_sim_despesa').update(payload).eq('id',d.id)); else ({error:e2}=await SB.from('fcah_sim_despesa').insert(withEmp(payload)));
     if(e2){toast('Erro: '+e2.message);return false;} SIM._cen=null;await loadSim();renderSim();toast('Salvo ✓');return true; });
 }
 async function simSalvarCenario(){ const nome=$('#simCenNome').value.trim()||('Cenário '+new Date().toLocaleString('pt-BR')); const c=computeSim();
   // snapshot completo: produtos, tributos e despesas (para restaurar tudo depois)
   const dados={cambio:c.cambio, produtos:SIM.produtos, tributos:SIM.tributos, despesas:SIM.despesas};
   const fatNec=(1-c.vRatio)>0?c.fixas/(1-c.vRatio):null;
-  const {error}=await SB.from('fcah_sim_cenario').insert({nome,dados,resultado:{recTot:c.recTot,resTot:c.resTot,margTot:c.margTot,fatNec}});
+  const {error}=await SB.from('fcah_sim_cenario').insert(withEmp({nome,dados,resultado:{recTot:c.recTot,resTot:c.resTot,margTot:c.margTot,fatNec}}));
   if(error){toast('Erro: '+error.message);return;} SIM._cen=nome; renderSim(); toast('Cenário salvo ✓'); $('#simCenNome').value='';
 }
 async function simCarregarCenario(){
-  const {data,error}=await SB.from('fcah_sim_cenario').select('*').order('criado_em',{ascending:false}).limit(50);
+  const _e=authEmp(); let _q=SB.from('fcah_sim_cenario').select('*'); if(_e!=null)_q=_q.eq('empresa_id',_e);
+  const {data,error}=await _q.order('criado_em',{ascending:false}).limit(50);
   if(error){toast('Erro: '+error.message);return;}
   const lista=data||[]; SIM._cenarios=lista;
   let body;
@@ -657,7 +660,7 @@ async function simCarregarCenario(){
 }
 async function simRestoreTable(table,rows,fields){
   const {error:de}=await SB.from(table).delete().gt('id',0); if(de)throw de;
-  if(rows&&rows.length){ const clean=rows.map(r=>{const o={};fields.forEach(f=>o[f]=r[f]);return o;}); const {error}=await SB.from(table).insert(clean); if(error)throw error; }
+  if(rows&&rows.length){ const clean=rows.map(r=>{const o={};fields.forEach(f=>o[f]=r[f]);return o;}); const {error}=await SB.from(table).insert(withEmp(clean)); if(error)throw error; }
 }
 async function simAplicarCenario(id){
   const c=(SIM._cenarios||[]).find(x=>x.id===id); if(!c||!c.dados){toast('Cenário inválido');return;}
@@ -890,11 +893,22 @@ async function afterLogin(user){
     const q2=await T(SB.from('fcah_usuario').select('*').eq('auth_uid',user.id).limit(1),'reler usuário'); prof=q2.data&&q2.data[0]; }
   AUTH_PROFILE=prof;
   if(!prof || !prof.ativo || !prof.empresa_id){ showAuthGate('pending'); return; }
+  VIEW_EMP=prof.empresa_id; // começa na própria empresa
   hideAuthGate(); setDB(true,'Supabase conectado');
   await T(loadGestao(),'carregar cadastros/lançamentos'); fillGestaoSelects(); renderGestao();
   await T(loadSim(),'carregar simulador'); renderSim();
   computePerm(prof.tipo); applyPerms();
-  showUserBadge(prof);
+  showUserBadge(prof); buildEmpSwitch();
+}
+// seletor de empresa (só superadmin): troca a empresa em visualização
+function buildEmpSwitch(){ const sel=$('#empSwitch'); if(!sel)return;
+  const isSuper=AUTH_PROFILE&&AUTH_PROFILE.tipo==='superadmin'; sel.hidden=!isSuper; if(!isSuper)return;
+  const emps=(G.empresas||[]).slice().sort((a,b)=>String(a.nome).localeCompare(String(b.nome)));
+  sel.innerHTML=emps.map(e=>`<option value="${e.id}" ${e.id==authEmp()?'selected':''}>🏢 ${esc(e.nome)}</option>`).join('');
+  sel.onchange=async()=>{ VIEW_EMP=+sel.value||null;
+    await loadGestao(); fillGestaoSelects(); renderGestao();
+    await loadSim(); renderSim(); if(typeof renderSimLan==='function')renderSimLan();
+    buildEmpSwitch(); toast('Empresa em visualização: '+empresaNome(VIEW_EMP)); };
 }
 function showUserBadge(p){ const b=$('#userBadge'); if(b){ b.hidden=false; b.innerHTML=esc(p.nome||p.email)+' · <b>'+esc(empresaNome(p.empresa_id))+'</b> <span class="tag proj">'+esc(ROLE_LABEL[p.tipo]||p.tipo||'—')+'</span>'; }
   const lo=$('#btnLogout'); if(lo)lo.hidden=false; }
@@ -932,7 +946,7 @@ async function salvarCenario(){
   const nome=$('#cenNome').value.trim()||('Cenário '+new Date().toLocaleString('pt-BR'));
   const payload={nome, descricao:CEN, params:ADJ, resultado:engine(ADJ).map(x=>({ano:x.ano,fat:x.fat,ebitda:x.ebitda,resultado:x.resultado}))};
   if(SB){
-    const {error}=await SB.from('fcah_cenario_sim').insert(payload);
+    const {error}=await SB.from('fcah_cenario_sim').insert(withEmp(payload));
     if(error){toast('Erro ao salvar: '+error.message);return;}
     toast('Cenário salvo no Supabase ✓');
   }else{
@@ -942,7 +956,7 @@ async function salvarCenario(){
 }
 async function carregarCenario(){
   let lista=[];
-  if(SB){const {data}=await SB.from('fcah_cenario_sim').select('*').order('criado_em',{ascending:false}).limit(20);lista=data||[];}
+  if(SB){const _e=authEmp(); let _q=SB.from('fcah_cenario_sim').select('*'); if(_e!=null)_q=_q.eq('empresa_id',_e); const {data}=await _q.order('criado_em',{ascending:false}).limit(20);lista=data||[];}
   else lista=JSON.parse(localStorage.getItem('fcah-cenarios')||'[]');
   if(!lista.length){toast('Nenhum cenário salvo ainda');return;}
   const nomes=lista.map((c,i)=>`${i+1}. ${c.nome}`).join('\n');
@@ -974,26 +988,37 @@ const ctaNat=cid=>{const c=G.contas.find(x=>x.id==cid);return c?grpNat(c.grupo_i
 function contaOptionsGrouped(sel){return G.grupos.slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0)).map(g=>{const cs=G.contas.filter(c=>c.grupo_id===g.id).sort((a,b)=>(a.ordem||0)-(b.ordem||0) || String(a.nome||'').localeCompare(String(b.nome||''),'pt',{sensitivity:'base'}));if(!cs.length)return '';return `<optgroup label="${esc(g.nome)} · ${g.natureza||'Despesa'}">`+cs.map(c=>`<option value="${c.id}" ${c.id==sel?'selected':''}>${esc(c.nome)}</option>`).join('')+'</optgroup>';}).join('');}
 function meioOptions(sel){return '<option value="">— nenhum —</option>'+G.meios.map(m=>`<option value="${m.id}" ${m.id==sel?'selected':''}>${esc(m.nome)}</option>`).join('');}
 
-async function sbFetchAll(table){ let all=[],from=0; const page=1000; // busca TODAS as linhas (Supabase limita 1000/consulta)
-  while(true){ const {data,error}=await SB.from(table).select('*').order('id',{ascending:true}).range(from,from+page-1);
+// empresa atualmente em VISUALIZAÇÃO — usada para ESCOPAR as telas operacionais (inclusive p/ superadmin)
+let VIEW_EMP=null; // superadmin pode trocar; demais ficam na própria empresa
+function authEmp(){ if(VIEW_EMP!=null) return VIEW_EMP; return (AUTH_PROFILE && AUTH_PROFILE.empresa_id!=null) ? AUTH_PROFILE.empresa_id : null; }
+// stamping de empresa nas ESCRITAS — só tem efeito para o superadmin olhando OUTRA empresa (senão o trigger do banco preenche a própria empresa)
+function withEmp(p){ if(!(AUTH_PROFILE&&AUTH_PROFILE.tipo==='superadmin')) return p; const e=authEmp(); if(e==null||e===AUTH_PROFILE.empresa_id) return p;
+  const add=x=>(x&&('empresa_id'in x)&&x.empresa_id!=null)?x:Object.assign({},x,{empresa_id:e});
+  return Array.isArray(p)?p.map(add):add(p); }
+async function sbFetchAll(table, emp){ let all=[],from=0; const page=1000; // busca TODAS as linhas (Supabase limita 1000/consulta)
+  while(true){ let q=SB.from(table).select('*'); if(emp!=null) q=q.eq('empresa_id',emp);
+    const {data,error}=await q.order('id',{ascending:true}).range(from,from+page-1);
     if(error)break; all=all.concat(data||[]); if(!data||data.length<page)break; from+=page; if(from>=100000)break; }
   return all; }
 async function loadGestao(){
   if(!SB)return;
-  const [g,c,m,u,emp]=await Promise.all([
-    SB.from('fcah_grupo').select('*').order('ordem'),
-    SB.from('fcah_conta_cad').select('*').order('ordem'),
-    SB.from('fcah_meio_pagamento').select('*').order('nome'),
-    SB.from('fcah_usuario').select('*').order('nome'),
-    SB.from('fcah_empresa').select('*').order('nome')
+  const emp=authEmp(); const scope=q=>(emp!=null?q.eq('empresa_id',emp):q);
+  const [g,c,m,u,empr]=await Promise.all([
+    scope(SB.from('fcah_grupo').select('*')).order('ordem'),
+    scope(SB.from('fcah_conta_cad').select('*')).order('ordem'),
+    scope(SB.from('fcah_meio_pagamento').select('*')).order('nome'),
+    SB.from('fcah_usuario').select('*').order('nome'),   // admin/superadmin: gestão de usuários (não escopa aqui; RLS governa)
+    SB.from('fcah_empresa').select('*').order('nome')    // idem para empresas
   ]);
-  G.grupos=g.data||[];G.contas=c.data||[];G.meios=m.data||[];G.usuarios=u.data||[];G.empresas=emp.data||[];
-  G.regras=await sbFetchAll('fcah_conta_regra');
+  G.grupos=g.data||[];G.contas=c.data||[];G.meios=m.data||[];G.usuarios=u.data||[];G.empresas=empr.data||[];
+  G.regras=await sbFetchAll('fcah_conta_regra', emp);
   await loadLanc();
 }
 async function loadLanc(){ if(!SB)return; // pagina de 1000 em 1000 (o Supabase limita cada consulta a 1000 linhas)
+  const emp=authEmp();
   let all=[], from=0; const page=1000;
-  while(true){ const {data,error}=await SB.from('fcah_lancamento_tx').select('*').order('data_pagamento',{ascending:false}).order('id',{ascending:false}).range(from,from+page-1);
+  while(true){ let q=SB.from('fcah_lancamento_tx').select('*'); if(emp!=null) q=q.eq('empresa_id',emp);
+    const {data,error}=await q.order('data_pagamento',{ascending:false}).order('id',{ascending:false}).range(from,from+page-1);
     if(error){ toast('Erro ao carregar lançamentos: '+error.message); break; }
     all=all.concat(data||[]); if(!data||data.length<page)break; from+=page; if(from>=100000)break; }
   G.lanc=all; }
@@ -1100,7 +1125,7 @@ async function salvarLanc(l){
     // item 4: ao TROCAR a conta de um lançamento, aprende uma regra (palavra distintiva → nova conta)
     if(l.conta_id && conta_id && l.conta_id!==conta_id && descricao){
       const kw=chooseLearnKeyword(descricao, conta_id, [], null);
-      if(kw){ const {error:re}=await SB.from('fcah_conta_regra').insert({palavra:kw.toLowerCase(),conta_id});
+      if(kw){ const {error:re}=await SB.from('fcah_conta_regra').insert(withEmp({palavra:kw.toLowerCase(),conta_id}));
         if(!re) learnedMsg=' · regra aprendida: “'+kw.toLowerCase()+'” → '+(conta?conta.nome:''); }
     }
   }else{
@@ -1108,7 +1133,7 @@ async function salvarLanc(l){
     const base=data_pagamento?new Date(data_pagamento+'T00:00:00'):new Date(); const cnt=modo==='unico'?1:N; const rows=[];
     for(let i=0;i<cnt;i++){ const d=new Date(base); d.setMonth(d.getMonth()+i); const dp=d.toISOString().slice(0,10);
       rows.push({tipo,valor: modo==='parcelado'?valor/N:valor,grupo_id,conta_id,meio_id,data_compra:i===0?data_compra:null,data_pagamento:dp,descricao,parcela_num:i+1,parcela_total:cnt,lote,origem:modo==='unico'?'manual':modo}); }
-    const {error}=await SB.from('fcah_lancamento_tx').insert(rows);
+    const {error}=await SB.from('fcah_lancamento_tx').insert(withEmp(rows));
     if(error){toast('Erro: '+error.message);return false;}
   }
   await loadGestao();await loadLanc();fillGestaoSelects();renderLanc();renderCaixaGer();toast('Lançamento salvo ✓'+learnedMsg);return true;
@@ -1155,7 +1180,8 @@ async function eiConfirm(){
   const rows=G.lanc.filter(l=>l.fonte===f);
   if(!rows.length){toast('Nenhum lançamento nessa importação');return false;}
   if(!confirm(`Excluir ${rows.length} lançamento(s) da importação "${f}"?\n\nEsta ação não pode ser desfeita.`))return false;
-  const {error}=await SB.from('fcah_lancamento_tx').delete().eq('fonte',f);
+  const _e=authEmp(); let _dq=SB.from('fcah_lancamento_tx').delete().eq('fonte',f); if(_e!=null)_dq=_dq.eq('empresa_id',_e);
+  const {error}=await _dq;
   if(error){toast('Erro: '+error.message);return false;}
   await loadLanc();renderLanc();renderCaixaGer();toast(`Importação "${f}" excluída (${rows.length} lançamento(s))`);return true;
 }
@@ -1434,7 +1460,7 @@ async function importBankConfirm(){
   }
   const novas={}; contaInputs.forEach(inp=>{ const v=inp.value.trim(); if(v && !G.contas.find(c=>norm(c.nome)===norm(v))) novas[norm(v)]=v; });
   try{ const nomesNovos=[...new Set(Object.values(novas))];
-    if(nomesNovos.length){ const {error}=await SB.from('fcah_conta_cad').insert(nomesNovos.map(n=>({nome:n,grupo_id:null}))); if(error)throw error; await loadGestao(); }
+    if(nomesNovos.length){ const {error}=await SB.from('fcah_conta_cad').insert(withEmp(nomesNovos.map(n=>({nome:n,grupo_id:null})))); if(error)throw error; await loadGestao(); }
   }catch(e){toast('Erro ao criar contas: '+e.message); rehab(); return;}
   const lote=uuid(); const rows=[]; const regrasNovas=[];
   IMPB.tx.forEach((t,i)=>{ let conta;
@@ -1454,8 +1480,8 @@ async function importBankConfirm(){
   rows.forEach(r=>{ delete r._conta; });
   if(cardOn && aprender){ Object.entries(cardMap).forEach(([k,cid])=>{ if(cid&&k&&k!=='?'){ const p=String(k).toLowerCase();
     if(!(G.regras||[]).some(r=>norm(r.palavra)===norm(p)) && !regrasNovas.some(r=>norm(r.palavra)===norm(p))) regrasNovas.push({palavra:p,conta_id:+cid}); } }); }
-  const {error}=await SB.from('fcah_lancamento_tx').insert(rows); if(error){toast('Erro: '+error.message); rehab(); return;}
-  if(regrasNovas.length){ await SB.from('fcah_conta_regra').insert(regrasNovas); }
+  const {error}=await SB.from('fcah_lancamento_tx').insert(withEmp(rows)); if(error){toast('Erro: '+error.message); rehab(); return;}
+  if(regrasNovas.length){ await SB.from('fcah_conta_regra').insert(withEmp(regrasNovas)); }
   await loadGestao(); fillGestaoSelects(); renderLanc(); renderCaixaGer();
   closeModal();
   toast(`${rows.length} lançamento(s) importado(s) em “${nome}” ✓`);
@@ -1515,15 +1541,15 @@ async function importResolveSave(){
   const natMap={}; document.querySelectorAll('.ung_nat').forEach(s=>natMap[s.dataset.val]=s.value);
   const contaGrupoSel={}; document.querySelectorAll('.unc_grupo').forEach(s=>contaGrupoSel[s.dataset.val]=s.value);
   try{
-    if(nGrupos.length){const {error}=await SB.from('fcah_grupo').insert(nGrupos.map(n=>({nome:n,natureza:natMap[n]||'Despesa'})));if(error)throw error;}
-    if(nMeios.length){const {error}=await SB.from('fcah_meio_pagamento').insert(nMeios.map(n=>({nome:n,tipo:'Outro'})));if(error)throw error;}
+    if(nGrupos.length){const {error}=await SB.from('fcah_grupo').insert(withEmp(nGrupos.map(n=>({nome:n,natureza:natMap[n]||'Despesa'}))));if(error)throw error;}
+    if(nMeios.length){const {error}=await SB.from('fcah_meio_pagamento').insert(withEmp(nMeios.map(n=>({nome:n,tipo:'Outro'}))));if(error)throw error;}
     await loadGestao();
     if(nContas.length){
       const fallback=G.grupos[0]&&G.grupos[0].id;
       const ins=nContas.map(n=>{ let gv=contaGrupoSel[n],gid=fallback;
         if(gv){ if(String(gv).startsWith('new:')){ const g=G.grupos.find(x=>norm(x.nome)===norm(gv.slice(4))); gid=g?g.id:fallback; } else gid=+gv||fallback; }
         return {nome:n,grupo_id:gid}; });
-      const {error}=await SB.from('fcah_conta_cad').insert(ins);if(error)throw error;
+      const {error}=await SB.from('fcah_conta_cad').insert(withEmp(ins));if(error)throw error;
       await loadGestao();
     }
   }catch(e){toast('Erro ao criar cadastros: '+e.message);return false;}
@@ -1550,7 +1576,7 @@ function importPreview(){
 async function importDoInsert(){
   const rows=IMPORT.valid||[]; if(!rows.length){toast('Nada válido para importar');return true;}
   const lote=uuid(); rows.forEach(v=>v.lote=lote);
-  const {error}=await SB.from('fcah_lancamento_tx').insert(rows);
+  const {error}=await SB.from('fcah_lancamento_tx').insert(withEmp(rows));
   if(error){toast('Erro: '+error.message);return false;}
   await loadLanc();fillGestaoSelects();renderLanc();renderCaixaGer();toast(`${rows.length} lançamento(s) importado(s) ✓`);return true;
 }
@@ -1628,7 +1654,7 @@ async function simLanGerar(){
   }
   if(!rows.length){ toast('Nada a gerar'); return; }
   if(!confirm(`Gerar ${rows.length} lançamento(s) simulado(s) na simulação "${nome}"?`))return;
-  const {error}=await SB.from('fcah_lancamento_tx').insert(rows); if(error){toast('Erro: '+error.message);return;}
+  const {error}=await SB.from('fcah_lancamento_tx').insert(withEmp(rows)); if(error){toast('Erro: '+error.message);return;}
   await loadLanc(); renderLanc(); renderCaixaGer(); renderSimSalvas();
   toast(`${rows.length} lançamento(s) simulado(s) gerado(s) ✓`);
 }
@@ -1654,10 +1680,10 @@ function renderSimSalvas(){ const box=$('#slSalvas'); if(!box)return;
 async function simPanelAct(act,lote,nome){
   if(!lote){ toast('Simulação sem identificador (lote) — edite os lançamentos individualmente na aba Lançamentos'); return; }
   if(act==='del'){ if(!confirm(`Excluir a simulação "${nome}" e TODOS os seus lançamentos simulados?`))return;
-    const {error}=await SB.from('fcah_lancamento_tx').delete().eq('lote',lote).eq('simulado',true); if(error){toast('Erro: '+error.message);return;}
+    { const _e=authEmp(); let _q=SB.from('fcah_lancamento_tx').delete().eq('lote',lote).eq('simulado',true); if(_e!=null)_q=_q.eq('empresa_id',_e); const {error}=await _q; if(error){toast('Erro: '+error.message);return;} }
     await loadLanc();renderLanc();renderCaixaGer();renderSimSalvas();toast('Simulação excluída ✓'); }
   else if(act==='reais'){ if(!confirm(`Tornar reais os lançamentos da simulação "${nome}"? Eles perdem a marca de simulado.`))return;
-    const {error}=await SB.from('fcah_lancamento_tx').update({simulado:false}).eq('lote',lote).eq('simulado',true); if(error){toast('Erro: '+error.message);return;}
+    { const _e=authEmp(); let _q=SB.from('fcah_lancamento_tx').update({simulado:false}).eq('lote',lote).eq('simulado',true); if(_e!=null)_q=_q.eq('empresa_id',_e); const {error}=await _q; if(error){toast('Erro: '+error.message);return;} }
     await loadLanc();renderLanc();renderCaixaGer();renderSimSalvas();toast('Agora são lançamentos reais ✓'); }
 }
 
@@ -1792,7 +1818,7 @@ async function replicarLanc(l){
   const base=new Date((l.data_pagamento||hoje())+'T00:00:00'); const lote=l.lote||uuid(); const rows=[];
   for(let i=1;i<=n;i++){ const d=new Date(base); d.setMonth(d.getMonth()+i);
     rows.push({tipo:l.tipo,valor:l.valor,grupo_id:l.grupo_id,conta_id:l.conta_id,meio_id:l.meio_id,data_compra:null,data_pagamento:d.toISOString().slice(0,10),descricao:l.descricao,parcela_num:1,parcela_total:1,lote,origem:'replicado'}); }
-  const {error}=await SB.from('fcah_lancamento_tx').insert(rows); if(error){toast('Erro: '+error.message);return;}
+  const {error}=await SB.from('fcah_lancamento_tx').insert(withEmp(rows)); if(error){toast('Erro: '+error.message);return;}
   await loadLanc();renderLanc();renderCaixaGer();reabrirDrill();toast(n+' réplica(s) criada(s) ✓');
 }
 
@@ -1878,7 +1904,7 @@ function startEditRule(span){ const id=+span.dataset.editrule; const old=span.te
 async function addRuleToConta(contaId){ const p=prompt('Nova palavra-chave para "'+ctaNome(contaId)+'" (parte do nome que identifica a conta):'); if(!p||!p.trim())return;
   const palavra=p.trim().toLowerCase();
   if((G.regras||[]).some(r=>r.conta_id===contaId&&norm(r.palavra)===norm(palavra))){toast('Essa palavra já existe nesta conta');return;}
-  const {error}=await SB.from('fcah_conta_regra').insert({palavra,conta_id:contaId}); if(error){toast('Erro: '+error.message);return;}
+  const {error}=await SB.from('fcah_conta_regra').insert(withEmp({palavra,conta_id:contaId})); if(error){toast('Erro: '+error.message);return;}
   await loadGestao(); renderCad(); toast('Palavra adicionada ✓'); }
 function formCad(it){ it=it||{};
   if(CAD_SUB==='grupos')return `<div class="form-grid"><div class="fld full"><label>Nome</label><input type="text" id="cf_nome" value="${esc(it.nome)}"></div><div class="fld"><label>Natureza (define Receita/Despesa das contas)</label><select id="cf_natureza"><option ${it.natureza==='Despesa'||!it.natureza?'selected':''}>Despesa</option><option ${it.natureza==='Receita'?'selected':''}>Receita</option></select></div><div class="fld"><label>Ordem</label><input type="number" id="cf_ordem" value="${it.ordem||0}"></div><div class="fld full"><label>Área / descrição</label><input type="text" id="cf_area" value="${esc(it.area)}"></div><div class="fld"><label>Ativo</label><select id="cf_ativo"><option value="true" ${it.ativo!==false?'selected':''}>Sim</option><option value="false" ${it.ativo===false?'selected':''}>Não</option></select></div></div>`;
@@ -1902,7 +1928,7 @@ async function salvarCad(it){
   if(CAD_SUB!=='regras' && !payload.nome){toast('Informe o nome');return false;}
   let error;
   if(it&&it.id){ ({error}=await SB.from(def.table).update(payload).eq('id',it.id)); }
-  else { ({error}=await SB.from(def.table).insert(payload)); }
+  else { const pl=(CAD_SUB==='usuarios'||CAD_SUB==='empresas')?payload:withEmp(payload); ({error}=await SB.from(def.table).insert(pl)); }
   if(error){toast('Erro: '+error.message);return false;}
   await loadGestao();fillGestaoSelects();renderCad();renderLanc();renderCaixaGer();toast('Salvo ✓');return true;
 }
