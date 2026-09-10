@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08l)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08n)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -164,6 +164,19 @@ body.perm-no-cad #btnNovoCad,
 body.perm-no-cad #btnRegrasView,
 body.perm-no-cad #btnRegrasClean,
 body.perm-no-cad #v-cad .acts{ display:none !important; }
+/* Dashboard */
+#v-dash .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){#v-dash .dgrid{grid-template-columns:1fr}}
+#v-dash .dbar{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:12.5px}
+#v-dash .dbar .dlbl{flex:0 0 40%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#v-dash .dbar .dtrack{flex:1;background:rgba(128,128,128,.15);border-radius:5px;height:14px;overflow:hidden}
+#v-dash .dbar .dfill{display:block;height:100%;border-radius:5px}
+#v-dash .dbar .dval{flex:0 0 auto;font-variant-numeric:tabular-nums;font-weight:600;min-width:86px;text-align:right}
+#v-dash .alert{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.08);border-radius:8px;margin:6px 0;font-size:12.5px}
+#v-dash .dup{padding:8px 10px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.06);border-radius:8px;margin:6px 0;font-size:12.5px}
+#v-dash table{width:100%;border-collapse:collapse;font-size:12.5px}
+#v-dash th,#v-dash td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left}
+#v-dash td.money,#v-dash th.money{text-align:right;font-variant-numeric:tabular-nums}
 </style>
 <div id="authGate" hidden style="position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px">
   <div class="panel" style="width:380px;max-width:94vw">
@@ -197,7 +210,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08l · seletor de empresa (superadmin)</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08n · dashboard</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -209,6 +222,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
   <nav class="tabs" id="tabs">
     <button data-v="lanc" class="active">🧾 Lançamentos</button>
     <button data-v="caixager">💵 Fluxo Gerencial</button>
+    <button data-v="dash">📊 Dashboard</button>
     <button data-v="simlan">🧪 Simulador de Lançamentos</button>
     <button data-v="sim">⚡ Simulador de Vendas</button>
     <button data-v="cad">⚙️ Cadastros</button>
@@ -278,6 +292,9 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div class="hint" id="simMetaHint" style="margin-top:10px"></div>
   </div>
 </section>
+
+<!-- ============ DASHBOARD ============ -->
+<section class="view" id="v-dash"></section>
 
 <!-- ============ LANÇAMENTOS ============ -->
 <section class="view active" id="v-lanc">
@@ -1104,8 +1121,9 @@ function formLanc(l,isDup){
 }
 function updNatLanc(){ const cid=+$('#fConta').value; const c=G.contas.find(x=>x.id===cid); const nat=ctaNat(cid);
   const el=$('#fNat'); if(el) el.innerHTML=`Grupo: <b>${esc(c?grpNome(c.grupo_id):'—')}</b> · Natureza: <span class="badge ${nat==='Receita'?'rec':'desp'}">${nat}</span> <span class="muted">(definida pelo grupo)</span>`; }
-function abrirFormLanc(l,isDup){
-  openModal(l&&!isDup?'Editar lançamento':(isDup?'Duplicar lançamento':'Novo lançamento'),formLanc(l,isDup),()=>salvarLanc(l&&!isDup?l:null));
+function abrirFormLanc(l,isDup,fromDrill){
+  const saveFn=async()=>{ const r=await salvarLanc(l&&!isDup?l:null); if(r!==false && fromDrill) setTimeout(reabrirDrill,0); return r; };
+  openModal(l&&!isDup?'Editar lançamento':(isDup?'Duplicar lançamento':'Novo lançamento'),formLanc(l,isDup),saveFn);
   $('#fConta').onchange=updNatLanc; updNatLanc();
   const modoEl=$('#fModo');
   if(modoEl){const upd=()=>{const modo=modoEl.value,N=Math.max(1,parseInt($('#fN').value)||1),v=parseNum($('#fValor').value);
@@ -1801,13 +1819,13 @@ function abrirDrill(scope,id,mes){
   $('#modalCancel').textContent='Fechar';
   const dt=$('#drillTbl'); if(dt){ dt.addEventListener('click',drillTblClick);
     dt.querySelectorAll('th.dsort').forEach(th=>th.addEventListener('click',()=>{ const k=th.dataset.sortkey; if(DRILL_SORT.key===k)DRILL_SORT.dir*=-1; else {DRILL_SORT.key=k;DRILL_SORT.dir=1;} abrirDrill(scope,id,mes); })); }
-  const nv=$('#drillNovo'); if(nv) nv.onclick=()=>abrirFormLanc(pre);
+  const nv=$('#drillNovo'); if(nv) nv.onclick=()=>abrirFormLanc(pre,false,true);
 }
 function reabrirDrill(){ if(DRILL) abrirDrill(DRILL.scope,DRILL.id,DRILL.mes); }
 function drillTblClick(e){ const b=e.target.closest('button[data-dact]'); if(!b)return; const id=+b.dataset.id,l=G.lanc.find(x=>x.id===id); if(!l)return;
   const act=b.dataset.dact;
-  if(act==='edit')abrirFormLanc(l);
-  else if(act==='dup')abrirFormLanc(l,true);
+  if(act==='edit')abrirFormLanc(l,false,true);
+  else if(act==='dup')abrirFormLanc(l,true,true);
   else if(act==='rep')replicarLanc(l);
   else if(act==='del')excluirLancDrill(id);
 }
@@ -2036,7 +2054,108 @@ function wireSim(){
 }
 
 /* ---- render all ---- */
-function renderAll(){renderSim();renderGestao();renderSimLan();}
+/* ===== DASHBOARD ===== */
+function renderDash(){
+  const box=$('#v-dash'); if(!box) return;
+  if(!SB){ box.innerHTML='<div class="panel"><div class="empty">Conecte ao Supabase para ver o dashboard.</div></div>'; return; }
+  const L=G.lanc||[];
+  const contaById={}; (G.contas||[]).forEach(c=>contaById[c.id]=c);
+  const foraFluxo=l=>l.conta_id!=null && contaById[l.conta_id] && contaById[l.conta_id].fora_fluxo;
+  const money=L.filter(l=>!foraFluxo(l));
+  const ym=l=>String(l.data_pagamento||'').slice(0,7);
+  const isRec=l=>l.tipo==='Receita', isDesp=l=>l.tipo==='Despesa';
+  const sumIf=(arr,f)=>arr.reduce((s,l)=>s+(f(l)?(+l.valor||0):0),0);
+  const now=new Date(), curY=now.getFullYear(), curM=now.getMonth();
+  const curYM=curY+'-'+String(curM+1).padStart(2,'0');
+  const mesLbl=MESES[curM]+'/'+String(curY).slice(2);
+  const money2=v=>'R$ '+fmt.format(Math.round(v));
+  const cls=v=>v<0?'neg':'pos';
+  const pctStr=v=>!isFinite(v)?'—':(v>=0?'+':'')+Math.round(v*100)+'%';
+
+  // ---- KPIs ----
+  const recMes=sumIf(money,l=>isRec(l)&&ym(l)===curYM);
+  const despMes=sumIf(money,l=>isDesp(l)&&ym(l)===curYM);
+  const recAno=sumIf(money,l=>isRec(l)&&(+ym(l).slice(0,4)===curY));
+  const despAno=sumIf(money,l=>isDesp(l)&&(+ym(l).slice(0,4)===curY));
+  const saldoTotal=money.reduce((s,l)=>s+svLanc(l),0);
+  let kpis=`<div class="kpis">`
+    +kpiCard('Receitas · '+mesLbl,money2(recMes),null,'#22c55e')
+    +kpiCard('Despesas · '+mesLbl,money2(despMes),null,'#f87171')
+    +kpiCard('Saldo · '+mesLbl,money2(recMes-despMes),null,(recMes-despMes)>=0?'#22c55e':'#ef4444')
+    +kpiCard('Receitas · '+curY,money2(recAno),null,'#22c55e')
+    +kpiCard('Despesas · '+curY,money2(despAno),null,'#f87171')
+    +kpiCard('Saldo acumulado (total)',money2(saldoTotal),null,saldoTotal>=0?'#22c55e':'#ef4444')
+    +`</div>`;
+
+  // ---- Gráfico: Receitas × Despesas (12 meses) ----
+  const months=[]; for(let i=11;i>=0;i--){ const d=new Date(curY,curM-i,1); months.push({key:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),label:MESES[d.getMonth()]+'/'+String(d.getFullYear()).slice(2)}); }
+  const rec=months.map(mm=>sumIf(money,l=>isRec(l)&&ym(l)===mm.key));
+  const desp=months.map(mm=>sumIf(money,l=>isDesp(l)&&ym(l)===mm.key));
+  const maxV=Math.max(1,...rec,...desp);
+  const W=720,H=230,pad=26,base=H-30,plotH=base-12,gw=(W-pad*2)/12;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">`;
+  svg+=`<line x1="${pad}" y1="${base}" x2="${W-pad}" y2="${base}" stroke="var(--line)"/>`;
+  months.forEach((mm,i)=>{ const x=pad+i*gw, bw=gw*0.30; const rh=rec[i]/maxV*plotH, dh=desp[i]/maxV*plotH;
+    svg+=`<rect x="${(x+gw*0.12).toFixed(1)}" y="${(base-rh).toFixed(1)}" width="${bw.toFixed(1)}" height="${rh.toFixed(1)}" rx="2" fill="#22c55e"><title>${mm.label} · Receita ${money2(rec[i])}</title></rect>`;
+    svg+=`<rect x="${(x+gw*0.12+bw+3).toFixed(1)}" y="${(base-dh).toFixed(1)}" width="${bw.toFixed(1)}" height="${dh.toFixed(1)}" rx="2" fill="#f87171"><title>${mm.label} · Despesa ${money2(desp[i])}</title></rect>`;
+    svg+=`<text x="${(x+gw/2).toFixed(1)}" y="${base+14}" text-anchor="middle" font-size="10" fill="var(--txt2)">${mm.label}</text>`; });
+  svg+=`</svg>`;
+  const chart=`<div class="panel"><div class="toolbar" style="margin-bottom:6px"><h3 style="margin:0">Receitas × Despesas — últimos 12 meses</h3><div class="grow"></div><span class="small"><span style="color:#22c55e">■</span> Receitas&nbsp;&nbsp;<span style="color:#f87171">■</span> Despesas</span></div>${svg}</div>`;
+
+  // ---- Despesas por grupo (ano) ----
+  const grpDesp={}; money.forEach(l=>{ if(!isDesp(l)||+ym(l).slice(0,4)!==curY)return; const c=contaById[l.conta_id]; const gid=c&&c.grupo_id!=null?c.grupo_id:'_'; grpDesp[gid]=(grpDesp[gid]||0)+(+l.valor||0); });
+  const grpRows=Object.entries(grpDesp).map(([k,v])=>({nome:k==='_'?'(Sem grupo)':grpNome(+k),v})).sort((a,b)=>b.v-a.v);
+  const maxG=Math.max(1,...grpRows.map(r=>r.v));
+  let grpBars=grpRows.length?grpRows.map(r=>`<div class="dbar"><span class="dlbl" title="${esc(r.nome)}">${esc(r.nome)}</span><span class="dtrack"><span class="dfill" style="width:${(r.v/maxG*100).toFixed(1)}%;background:#f87171"></span></span><span class="dval">${money2(r.v)}</span></div>`).join(''):'<div class="empty">Sem despesas no ano.</div>';
+  const panelGrp=`<div class="panel"><h3>Despesas por grupo · ${curY}</h3>${grpBars}</div>`;
+
+  // ---- Estatísticas por conta (ano) ----
+  const cStat={}; money.forEach(l=>{ if(+ym(l).slice(0,4)!==curY)return; const cid=l.conta_id==null?'_':l.conta_id; const o=cStat[cid]=cStat[cid]||{net:0,n:0,ms:new Set()}; o.net+=svLanc(l); o.n++; o.ms.add(ym(l)); });
+  const cRows=Object.entries(cStat).map(([k,o])=>({nome:k==='_'?'(sem conta)':ctaNome(+k),net:o.net,n:o.n,media:o.net/Math.max(1,o.ms.size)})).sort((a,b)=>Math.abs(b.net)-Math.abs(a.net)).slice(0,10);
+  let cTbl=`<table><thead><tr><th>Conta</th><th class="money">Total ${curY}</th><th class="money">Média/mês</th><th class="money">Lanç.</th></tr></thead><tbody>`
+    +cRows.map(r=>`<tr><td>${esc(r.nome)}</td><td class="money ${cls(r.net)}">${money2(r.net)}</td><td class="money ${cls(r.media)}">${money2(r.media)}</td><td class="money">${r.n}</td></tr>`).join('')
+    +`</tbody></table>`;
+  const panelConta=`<div class="panel"><h3>Top 10 contas · ${curY}</h3>${cRows.length?cTbl:'<div class="empty">Sem lançamentos no ano.</div>'}</div>`;
+
+  // ---- Alertas: valores fora da curva (vs média dos 3 meses anteriores) ----
+  const prior3=[]; for(let i=1;i<=3;i++){ const d=new Date(curY,curM-i,1); prior3.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); }
+  const byC={}; money.forEach(l=>{ const cid=l.conta_id; if(cid==null)return; const o=byC[cid]=byC[cid]||{cur:0,p:[0,0,0],has:[0,0,0]}; const k=ym(l);
+    if(k===curYM)o.cur+=svLanc(l); const pi=prior3.indexOf(k); if(pi>=0){o.p[pi]+=svLanc(l);o.has[pi]=1;} });
+  const alerts=[]; Object.entries(byC).forEach(([cid,o])=>{ const nP=o.has[0]+o.has[1]+o.has[2]; if(!nP)return; const avg=(o.p[0]+o.p[1]+o.p[2])/3; const diff=o.cur-avg; if(Math.abs(diff)<300)return; const p=avg!==0?diff/Math.abs(avg):(o.cur!==0?Infinity:0); if(avg!==0&&Math.abs(p)<0.5)return; alerts.push({cid:+cid,cur:o.cur,avg,diff,p}); });
+  alerts.sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff));
+  let alertList=alerts.length?alerts.slice(0,12).map(a=>`<div class="alert"><div><b>${esc(ctaNome(a.cid))}</b><br><span class="muted small">média 3m ${money2(a.avg)} · ${mesLbl} ${money2(a.cur)}</span></div><div style="text-align:right;font-weight:700" class="${a.diff>=0?'pos':'neg'}">${a.diff>=0?'▲':'▼'} ${pctStr(a.p)}<br><span class="small">${money2(a.diff)}</span></div></div>`).join(''):'<div class="empty">Nenhum valor fora da curva neste mês. 👍</div>';
+  const panelAlert=`<div class="panel"><h3>⚠️ Alertas — fora da curva (${mesLbl} vs média dos 3 meses anteriores)</h3>${alertList}</div>`;
+
+  // ---- Duplicados / suspeitos ----
+  const grp={}; L.forEach(l=>{ if(!(Math.abs(+l.valor||0)>0))return; const k=String(l.data_pagamento||'').slice(0,10)+'|'+Math.round(Math.abs(+l.valor||0)*100)+'|'+norm(l.descricao||''); (grp[k]=grp[k]||[]).push(l); });
+  const dups=Object.values(grp).filter(a=>a.length>1).sort((a,b)=>Math.abs(b[0].valor)-Math.abs(a[0].valor));
+  let dupList=dups.length?dups.slice(0,15).map(a=>{ const l=a[0]; const contas=[...new Set(a.map(x=>ctaNome(x.conta_id)))].join(', '); const fontes=[...new Set(a.map(x=>x.fonte).filter(Boolean))].join(', ');
+    return `<div class="dup"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>${money2(Math.abs(l.valor))}</b> · ${fmtData(l.data_pagamento)}<br><span class="muted small">${esc(l.descricao)||'(sem descrição)'}</span></div><div style="text-align:right"><span class="tag desp">${a.length}×</span><br><span class="small muted">${esc(contas)}</span></div></div>${fontes?`<div class="small muted" style="margin-top:3px">fontes: ${esc(fontes)}</div>`:''}</div>`; }).join(''):'<div class="empty">Nenhum lançamento duplicado detectado. 👍</div>';
+  const panelDup=`<div class="panel"><h3>🔁 Possíveis duplicados / suspeitos</h3><div class="hint" style="margin-bottom:8px">Mesma data, valor e descrição. Podem ser legítimos (ex.: cartões/portadores diferentes) — confira antes de excluir.</div>${dupList}</div>`;
+
+  // ---- Maiores lançamentos do mês + qualidade dos dados ----
+  const doMes=money.filter(l=>ym(l)===curYM).slice().sort((a,b)=>Math.abs(+b.valor||0)-Math.abs(+a.valor||0)).slice(0,5);
+  let topMes=doMes.length?`<table><tbody>`+doMes.map(l=>`<tr><td>${fmtData(l.data_pagamento)}</td><td>${esc(l.descricao)||'—'}</td><td class="muted small">${esc(ctaNome(l.conta_id))}</td><td class="money ${cls(svLanc(l))}">${money2(svLanc(l))}</td></tr>`).join('')+`</tbody></table>`:'<div class="empty">Sem lançamentos em '+mesLbl+'.</div>';
+  const semConta=L.filter(l=>l.conta_id==null).length;
+  const contasSemGrupo=(G.contas||[]).filter(c=>c.grupo_id==null).length;
+  const datas=L.map(l=>l.data_pagamento).filter(Boolean).sort();
+  const periodo=datas.length?(fmtData(datas[0])+' – '+fmtData(datas[datas.length-1])):'—';
+  const qual=`<table><tbody>
+    <tr><td>Total de lançamentos</td><td class="money">${fmt.format(L.length)}</td></tr>
+    <tr><td>Lançamentos sem conta</td><td class="money ${semConta?'neg':''}">${fmt.format(semConta)}</td></tr>
+    <tr><td>Contas sem grupo</td><td class="money ${contasSemGrupo?'neg':''}">${fmt.format(contasSemGrupo)}</td></tr>
+    <tr><td>Período coberto</td><td class="money">${periodo}</td></tr>
+    <tr><td>Grupos · Contas</td><td class="money">${fmt.format((G.grupos||[]).length)} · ${fmt.format((G.contas||[]).length)}</td></tr>
+  </tbody></table>`;
+  const panelTop=`<div class="panel"><h3>Maiores lançamentos · ${mesLbl}</h3>${topMes}</div>`;
+  const panelQual=`<div class="panel"><h3>Qualidade dos dados</h3>${qual}</div>`;
+
+  box.innerHTML=kpis+chart
+    +`<div class="dgrid">${panelGrp}${panelConta}</div>`
+    +`<div class="dgrid">${panelAlert}${panelDup}</div>`
+    +`<div class="dgrid">${panelTop}${panelQual}</div>`;
+}
+function renderAll(){renderSim();renderGestao();renderSimLan();renderDash();}
 fillYearSelectors();wireGestao();wireSim();renderAll();initDB();
 </script>
 </body>
