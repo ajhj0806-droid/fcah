@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08o)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08p)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -73,7 +73,7 @@ select,input[type=text],input[type=number]{background:var(--panel2);border:1px s
 table{width:100%;border-collapse:collapse;font-size:12.5px}
 th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line)}
 th:first-child,td:first-child{text-align:left}
-thead th{color:var(--txt2);font-weight:650;font-size:11px;text-transform:uppercase;letter-spacing:.3px;position:sticky;top:0;background:var(--panel)}
+thead th{color:var(--txt2);font-weight:650;font-size:11px;text-transform:uppercase;letter-spacing:.3px;position:sticky;top:0;background:var(--panel);z-index:2}
 tbody tr:hover{background:var(--panel2)}
 tr.grp td{background:var(--panel2);font-weight:700;color:var(--txt)}
 tr.tot td{font-weight:750;border-top:2px solid var(--line2)}
@@ -210,7 +210,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08o · natureza</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08p · fluxo</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -335,7 +335,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
       <button class="btn ghost" id="cgExport">⭳ Exportar CSV</button>
     </div>
     <div class="kpis" id="cgKpis" style="margin-bottom:14px"></div>
-    <div class="tblwrap"><table id="cgTbl"></table></div>
+    <div class="tblwrap" style="max-height:calc(100vh - 250px);overflow:auto"><table id="cgTbl"></table></div>
   </div>
 </section>
 
@@ -1732,13 +1732,8 @@ function renderCaixaGer(){
   const colTot=new Array(12).fill(0); Object.values(gmap).forEach(a=>a.forEach((v,i)=>colTot[i]+=v)); semArr.forEach((v,i)=>colTot[i]+=v); semGrupoArr.forEach((v,i)=>colTot[i]+=v);
   const colCnt=new Array(12).fill(0); Object.values(gcnt).forEach(a=>a.forEach((v,i)=>colCnt[i]+=v)); semCnt.forEach((v,i)=>colCnt[i]+=v); semGrupoCnt.forEach((v,i)=>colCnt[i]+=v);
   const sumA=a=>a.reduce((s,v)=>s+v,0);
-  // Receitas e Despesas somam pela NATUREZA do GRUPO da conta (não pelo tipo do lançamento), respeitando o sinal do valor.
-  const natLanc=l=>{ const c=(l.conta_id!=null)?contaById[l.conta_id]:null; const gId=c?c.grupo_id:null; return gId!=null?grpNat(gId):(l.tipo==='Receita'?'Receita':'Despesa'); };
-  let rec=0,desp=0; inWin.forEach(l=>{ const v=+l.valor||0; if(natLanc(l)==='Receita')rec+=v; else desp+=v; });
+  // Totalizadores (Receitas/Despesas/Saldo) removidos do resumo — mantém-se apenas Lançamentos.
   $('#cgKpis').innerHTML=
-    kpiCard('Receitas ('+perLbl+')','R$ '+fmt.format(rec),null,'#22c55e')+
-    kpiCard('Despesas ('+perLbl+')','R$ '+fmt.format(desp),null,'#f87171')+
-    kpiCard('Saldo ('+perLbl+')','R$ '+fmt.format(rec-desp),null,(rec-desp)>=0?'#22c55e':'#ef4444')+
     kpiCard('Lançamentos ('+perLbl+')',fmt.format(inWin.length),null,'var(--accent)');
   const cgc=(v,scope,id,m,cnt)=>{ if(!v){ if(cnt>0) return `<td class="money cgcell" style="color:var(--amber);font-weight:600" data-scope="${scope}" data-id="${id}" data-mes="${m}" title="Saldo zero com ${cnt} lançamento(s) — clique para ver/editar">0 ⚠</td>`; return '<td class="muted">—</td>'; } const c=v<0?'neg':'pos'; return `<td class="money ${c} cgcell" data-scope="${scope}" data-id="${id}" data-mes="${m}" title="ver lançamentos">${fmt.format(v)}</td>`; };
   let h='<thead><tr><th>Grupo / Conta</th>'+months.map(mm=>`<th>${mm.label}</th>`).join('')+'<th>Total</th></tr></thead><tbody>';
