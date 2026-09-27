@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08q)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08r)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -212,7 +212,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08q · futuro</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08r · venda→fluxo</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -573,23 +573,25 @@ function renderSim(){
     kpiCard('Margem atual',pct.format(c.margTot),null,'#f59e0b')+
     kpiCard('Faturar p/ cobrir despesas', isFinite(fatNec)?'R$ '+fmt.format(fatNec):'—',null,'#7c3aed');
   // 1. Produtos
-  let h='<thead><tr><th>Produto/Serviço</th><th>Tipo</th><th>Moeda</th><th>Vlr unit</th><th>Custo unit</th><th>Qtd/mês</th><th>Receita (R$)</th><th>Custo (R$)</th><th></th></tr></thead><tbody>';
-  if(!SIM.produtos.length) h+='<tr><td colspan="9"><div class="empty">Nenhum produto. Clique em “＋ Produto/Serviço”.</div></td></tr>';
+  const ctaTag=id=> id? esc(ctaNome(id)) : '<span style="color:var(--amber)" title="Associe uma conta para lançar no fluxo">⚠ sem conta</span>';
+  let h='<thead><tr><th>Produto/Serviço</th><th>Tipo</th><th>Moeda</th><th>Vlr unit</th><th>Custo unit</th><th>Qtd/mês</th><th>Receita (R$)</th><th>Custo (R$)</th><th>Conta (fluxo)</th><th></th></tr></thead><tbody>';
+  if(!SIM.produtos.length) h+='<tr><td colspan="10"><div class="empty">Nenhum produto. Clique em “＋ Produto/Serviço”.</div></td></tr>';
   SIM.produtos.forEach(p=>{ const rec=parseNum(p.qtd_padrao)*p.valor_venda*(p.moeda==='USD'?c.cambio:1); const cu=parseNum(p.qtd_padrao)*p.custo_unit*(p.moeda==='USD'?c.cambio:1);
     h+=`<tr><td>${esc(p.nome)}</td><td><span class="badge ${p.tipo==='Serviço'?'rec':'desp'}">${esc(p.tipo)}</span></td><td>${p.moeda}</td><td>${fmt2.format(p.valor_venda)}</td><td>${fmt2.format(p.custo_unit)}</td>`+
       `<td><input type="number" class="simqtd" data-id="${p.id}" value="${p.qtd_padrao}" style="width:90px"></td><td class="money pos">${fmt.format(rec)}</td><td class="money neg">${fmt.format(cu)}</td>`+
+      `<td class="small">R: ${ctaTag(p.conta_receita_id)}<br>C: ${ctaTag(p.conta_custo_id)}</td>`+
       `<td class="acts"><button class="actbtn" data-sact="prod-edit" data-id="${p.id}">✎</button> <button class="actbtn del" data-sact="prod-del" data-id="${p.id}">✕</button></td></tr>`; });
   h+='</tbody>';$('#simProdTbl').innerHTML=h;
   // 2. Tributos
-  h='<thead><tr><th>Tributo</th><th>Alíquota %</th><th>Incide em</th><th></th></tr></thead><tbody>';
-  if(!SIM.tributos.length) h+='<tr><td colspan="4"><div class="empty">Nenhum tributo.</div></td></tr>';
-  SIM.tributos.forEach(t=>{ h+=`<tr><td>${esc(t.nome)}</td><td>${fmt2.format(t.aliquota)}%</td><td>${esc(t.tipo)}</td><td class="acts"><button class="actbtn" data-sact="trib-edit" data-id="${t.id}">✎</button> <button class="actbtn del" data-sact="trib-del" data-id="${t.id}">✕</button></td></tr>`; });
+  h='<thead><tr><th>Tributo</th><th>Alíquota %</th><th>Incide em</th><th>Conta (fluxo)</th><th></th></tr></thead><tbody>';
+  if(!SIM.tributos.length) h+='<tr><td colspan="5"><div class="empty">Nenhum tributo.</div></td></tr>';
+  SIM.tributos.forEach(t=>{ h+=`<tr><td>${esc(t.nome)}</td><td>${fmt2.format(t.aliquota)}%</td><td>${esc(t.tipo)}</td><td class="small">${ctaTag(t.conta_id)}</td><td class="acts"><button class="actbtn" data-sact="trib-edit" data-id="${t.id}">✎</button> <button class="actbtn del" data-sact="trib-del" data-id="${t.id}">✕</button></td></tr>`; });
   h+='</tbody>';$('#simTribTbl').innerHTML=h;
   // 3. Despesas
-  h='<thead><tr><th>Despesa</th><th>Modo</th><th>Valor</th><th>Tipo</th><th></th></tr></thead><tbody>';
-  if(!SIM.despesas.length) h+='<tr><td colspan="5"><div class="empty">Nenhuma despesa.</div></td></tr>';
+  h='<thead><tr><th>Despesa</th><th>Modo</th><th>Valor</th><th>Tipo</th><th>Conta (fluxo)</th><th></th></tr></thead><tbody>';
+  if(!SIM.despesas.length) h+='<tr><td colspan="6"><div class="empty">Nenhuma despesa.</div></td></tr>';
   SIM.despesas.forEach(d=>{ const v=d.modo==='Percentual'?fmt2.format(d.valor)+'%':'R$ '+fmt.format(d.valor);
-    h+=`<tr><td>${esc(d.nome)}</td><td>${esc(d.modo)}</td><td>${v}</td><td>${esc(d.tipo)}</td><td class="acts"><button class="actbtn" data-sact="desp-edit" data-id="${d.id}">✎</button> <button class="actbtn del" data-sact="desp-del" data-id="${d.id}">✕</button></td></tr>`; });
+    h+=`<tr><td>${esc(d.nome)}</td><td>${esc(d.modo)}</td><td>${v}</td><td>${esc(d.tipo)}</td><td class="small">${ctaTag(d.conta_id)}</td><td class="acts"><button class="actbtn" data-sact="desp-edit" data-id="${d.id}">✎</button> <button class="actbtn del" data-sact="desp-del" data-id="${d.id}">✕</button></td></tr>`; });
   h+='</tbody>';$('#simDespTbl').innerHTML=h;
   // 4. Resultado
   h='<thead><tr><th>Linha</th><th>Receitas</th><th>Tributos</th><th>Custos</th><th>Despesas</th><th>Resultado</th><th>Margem %</th></tr></thead><tbody>';
@@ -629,7 +631,10 @@ function simFormProd(p){ p=p||{};
     <div class="fld"><label>Custo unitário</label><input type="number" id="sp_custo" step="0.01" value="${p.custo_unit||''}"></div>
     <div class="fld"><label>Quantidade / mês</label><input type="number" id="sp_qtd" value="${p.qtd_padrao||0}"></div>
     <div class="fld"><label>Unidade</label><input type="text" id="sp_un" value="${esc(p.unidade)}"></div>
-  </div>`, async()=>{ const payload={nome:$('#sp_nome').value.trim(),tipo:$('#sp_tipo').value,moeda:$('#sp_moeda').value,valor_venda:parseNum($('#sp_valor').value),custo_unit:parseNum($('#sp_custo').value),qtd_padrao:parseNum($('#sp_qtd').value),unidade:$('#sp_un').value.trim()||null};
+    <div class="fld"><label>Conta de RECEITA (fluxo)</label><select id="sp_cr">${contaOptsNat(p.conta_receita_id,'Receita')}</select></div>
+    <div class="fld"><label>Conta de CUSTO (fluxo)</label><select id="sp_cc">${contaOptsNat(p.conta_custo_id,'Despesa')}</select></div>
+    <div class="hint full">As contas definem onde a receita e o custo deste produto entram no Fluxo Gerencial ao lançar o cenário. Podem ficar em branco (aí o item não é lançado no fluxo).</div>
+  </div>`, async()=>{ const payload={nome:$('#sp_nome').value.trim(),tipo:$('#sp_tipo').value,moeda:$('#sp_moeda').value,valor_venda:parseNum($('#sp_valor').value),custo_unit:parseNum($('#sp_custo').value),qtd_padrao:parseNum($('#sp_qtd').value),unidade:$('#sp_un').value.trim()||null,conta_receita_id:(+$('#sp_cr').value||null),conta_custo_id:(+$('#sp_cc').value||null)};
     if(!payload.nome){toast('Informe o nome');return false;} let e2;
     if(p.id)({error:e2}=await SB.from('fcah_sim_produto').update(payload).eq('id',p.id)); else ({error:e2}=await SB.from('fcah_sim_produto').insert(withEmp(payload)));
     if(e2){toast('Erro: '+e2.message);return false;} SIM._cen=null;await loadSim();renderSim();toast('Salvo ✓');return true; });
@@ -639,7 +644,8 @@ function simFormTrib(t){ t=t||{};
     <div class="fld full"><label>Nome</label><input type="text" id="st_nome" value="${esc(t.nome)}"></div>
     <div class="fld"><label>Alíquota %</label><input type="number" id="st_aliq" step="0.01" value="${t.aliquota||''}"></div>
     <div class="fld"><label>Incide em</label>${selTipo('st_tipo',t.tipo||'Venda',['Venda','Serviço','Ambos'])}</div>
-  </div>`, async()=>{ const payload={nome:$('#st_nome').value.trim(),aliquota:parseNum($('#st_aliq').value),tipo:$('#st_tipo').value};
+    <div class="fld full"><label>Conta de DESPESA (fluxo)</label><select id="st_conta">${contaOptsNat(t.conta_id,'Despesa')}</select></div>
+  </div>`, async()=>{ const payload={nome:$('#st_nome').value.trim(),aliquota:parseNum($('#st_aliq').value),tipo:$('#st_tipo').value,conta_id:(+$('#st_conta').value||null)};
     if(!payload.nome){toast('Informe o nome');return false;} let e2;
     if(t.id)({error:e2}=await SB.from('fcah_sim_tributo').update(payload).eq('id',t.id)); else ({error:e2}=await SB.from('fcah_sim_tributo').insert(withEmp(payload)));
     if(e2){toast('Erro: '+e2.message);return false;} SIM._cen=null;await loadSim();renderSim();toast('Salvo ✓');return true; });
@@ -650,8 +656,9 @@ function simFormDesp(d){ d=d||{};
     <div class="fld"><label>Modo</label>${selTipo('sd_modo',d.modo||'Percentual',['Percentual','Valor'])}</div>
     <div class="fld"><label>Valor (% ou R$)</label><input type="number" id="sd_valor" step="0.01" value="${d.valor||''}"></div>
     <div class="fld full"><label>Tipo</label>${selTipo('sd_tipo',d.tipo||'Ambos',['Venda','Serviço','Ambos','Fixa'])}</div>
+    <div class="fld full"><label>Conta de DESPESA (fluxo)</label><select id="sd_conta">${contaOptsNat(d.conta_id,'Despesa')}</select></div>
     <div class="hint full">% incide sobre o faturamento do tipo. "Fixa" = valor em R$/mês independente da venda.</div>
-  </div>`, async()=>{ const payload={nome:$('#sd_nome').value.trim(),modo:$('#sd_modo').value,valor:parseNum($('#sd_valor').value),tipo:$('#sd_tipo').value};
+  </div>`, async()=>{ const payload={nome:$('#sd_nome').value.trim(),modo:$('#sd_modo').value,valor:parseNum($('#sd_valor').value),tipo:$('#sd_tipo').value,conta_id:(+$('#sd_conta').value||null)};
     if(!payload.nome){toast('Informe o nome');return false;} let e2;
     if(d.id)({error:e2}=await SB.from('fcah_sim_despesa').update(payload).eq('id',d.id)); else ({error:e2}=await SB.from('fcah_sim_despesa').insert(withEmp(payload)));
     if(e2){toast('Erro: '+e2.message);return false;} SIM._cen=null;await loadSim();renderSim();toast('Salvo ✓');return true; });
@@ -670,12 +677,16 @@ async function simCarregarCenario(){
   const lista=data||[]; SIM._cenarios=lista;
   let body;
   if(!lista.length) body='<div class="empty">Nenhum cenário salvo ainda. Ajuste as quantidades/câmbio e clique em “💾 Salvar cenário”.</div>';
-  else{ body='<div class="small muted" style="margin-bottom:8px">Clique no cenário para carregá-lo.</div><div class="tblwrap"><table id="simCenTbl"><thead><tr><th>Cenário</th><th>Salvo em</th><th>Faturamento</th><th>Margem</th><th></th></tr></thead><tbody>';
-    lista.forEach(c=>{ const r=c.resultado||{}; body+=`<tr data-load="${c.id}" style="cursor:pointer"><td><b>${esc(c.nome)}</b></td><td class="muted">${fmtData(c.criado_em)} ${String(c.criado_em).slice(11,16)}</td><td class="money">R$ ${fmt.format(r.recTot||0)}</td><td>${r.margTot!=null?pct.format(r.margTot):'—'}</td><td class="acts"><button class="actbtn del" data-delcen="${c.id}" title="Excluir">✕</button></td></tr>`; });
+  else{ body='<div class="small muted" style="margin-bottom:8px">Clique no nome do cenário para carregá-lo na tela. Use <b>▶ Fluxo</b> para lançar/atualizar as receitas e despesas no Fluxo Gerencial.</div><div class="tblwrap"><table id="simCenTbl"><thead><tr><th>Cenário</th><th>Salvo em</th><th>Faturamento</th><th>Margem</th><th>No fluxo</th><th></th></tr></thead><tbody>';
+    lista.forEach(c=>{ const r=c.resultado||{}; const fx=c.lote?'<span class="badge rec" title="Este cenário está lançado no Fluxo Gerencial">no fluxo</span>':'<span class="muted">—</span>';
+      body+=`<tr style="cursor:default"><td data-load="${c.id}" style="cursor:pointer"><b>${esc(c.nome)}</b></td><td class="muted">${fmtData(c.criado_em)} ${String(c.criado_em).slice(11,16)}</td><td class="money">R$ ${fmt.format(r.recTot||0)}</td><td>${r.margTot!=null?pct.format(r.margTot):'—'}</td><td>${fx}</td><td class="acts" style="white-space:nowrap"><button class="actbtn" data-fluxocen="${c.id}" title="Lançar/atualizar as receitas e despesas deste cenário no Fluxo Gerencial">▶ Fluxo</button> <button class="actbtn" data-updcen="${c.id}" title="Sobrescrever este cenário com os itens atuais da tela (e atualizar o fluxo, se lançado)">✎ Atualizar</button> <button class="actbtn del" data-delcen="${c.id}" title="Excluir cenário (e seus lançamentos no fluxo)">✕</button></td></tr>`; });
     body+='</tbody></table></div>'; }
   openModal('📂 Cenários salvos',body,null); $('#modalCancel').textContent='Fechar';
   const tb=$('#simCenTbl');
-  if(tb) tb.addEventListener('click',e=>{ const del=e.target.closest('button[data-delcen]'); if(del){e.stopPropagation();simExcluirCenario(+del.dataset.delcen);return;} const row=e.target.closest('tr[data-load]'); if(row)simAplicarCenario(+row.dataset.load); });
+  if(tb) tb.addEventListener('click',e=>{ const fx=e.target.closest('button[data-fluxocen]'); if(fx){e.stopPropagation();simLancarDialog(+fx.dataset.fluxocen);return;}
+    const up=e.target.closest('button[data-updcen]'); if(up){e.stopPropagation();simAtualizarCenario(+up.dataset.updcen);return;}
+    const del=e.target.closest('button[data-delcen]'); if(del){e.stopPropagation();simExcluirCenario(+del.dataset.delcen);return;}
+    const cell=e.target.closest('td[data-load]'); if(cell)simAplicarCenario(+cell.dataset.load); });
 }
 async function simRestoreTable(table,rows,fields){
   const {error:de}=await SB.from(table).delete().gt('id',0); if(de)throw de;
@@ -687,9 +698,9 @@ async function simAplicarCenario(id){
   if(full){
     if(!confirm('Carregar "'+c.nome+'" vai SUBSTITUIR os produtos, tributos e despesas atuais pelos deste cenário (o estado atual não salvo será perdido). Continuar?')) return;
     try{
-      await simRestoreTable('fcah_sim_produto', d.produtos||[], ['nome','tipo','moeda','valor_venda','custo_unit','qtd_padrao','unidade','ativo']);
-      await simRestoreTable('fcah_sim_tributo', d.tributos||[], ['nome','aliquota','tipo','ativo']);
-      await simRestoreTable('fcah_sim_despesa', d.despesas||[], ['nome','modo','valor','tipo','ativo']);
+      await simRestoreTable('fcah_sim_produto', d.produtos||[], ['nome','tipo','moeda','valor_venda','custo_unit','qtd_padrao','unidade','ativo','conta_receita_id','conta_custo_id']);
+      await simRestoreTable('fcah_sim_tributo', d.tributos||[], ['nome','aliquota','tipo','ativo','conta_id']);
+      await simRestoreTable('fcah_sim_despesa', d.despesas||[], ['nome','modo','valor','tipo','ativo','conta_id']);
     }catch(e){toast('Erro ao restaurar: '+e.message); await loadSim(); renderSim(); return;}
     if(d.cambio) $('#simCambio').value=d.cambio;
     await loadSim();
@@ -701,7 +712,75 @@ async function simAplicarCenario(id){
   }
   SIM._cen=c.nome; closeModal(); renderSim(); toast('Cenário "'+c.nome+'" carregado ✓');
 }
-async function simExcluirCenario(id){ if(!confirm('Excluir este cenário salvo?'))return; const {error}=await SB.from('fcah_sim_cenario').delete().eq('id',id); if(error){toast('Erro: '+error.message);return;} toast('Cenário excluído'); simCarregarCenario(); }
+// ---- Lançar cenário de VENDAS no Fluxo Gerencial (receitas/despesas detalhadas, ligadas a contas) ----
+// Extrai os itens detalhados de um snapshot de cenário {cambio,produtos,tributos,despesas}.
+function simDetalhado(d){ d=d||{};
+  const cambio=parseNum(d.cambio)||1; const conv=(v,moeda)=>parseNum(v)*(moeda==='USD'?cambio:1);
+  const prods=d.produtos||[], tribs=d.tributos||[], desps=d.despesas||[];
+  let recV=0,recS=0; prods.forEach(p=>{ const r=parseNum(p.qtd_padrao)*conv(p.valor_venda,p.moeda); if(p.tipo==='Serviço')recS+=r; else recV+=r; });
+  const baseTipo=t=> t==='Ambos'?(recV+recS):(t==='Serviço'?recS:recV);
+  const items=[], semConta=[];
+  const push=o=>{ if(!(o.valor>0))return; if(o.conta_id==null){ if(!semConta.includes(o.nome))semConta.push(o.nome); return; } items.push(o); };
+  prods.forEach(p=>{ const rec=parseNum(p.qtd_padrao)*conv(p.valor_venda,p.moeda); const cst=parseNum(p.qtd_padrao)*conv(p.custo_unit,p.moeda);
+    push({tipo:'Receita',valor:rec,conta_id:p.conta_receita_id,nome:(p.nome||'produto')+' (receita)',desc:'Receita — '+(p.nome||'produto')+' (venda sim)'});
+    push({tipo:'Despesa',valor:cst,conta_id:p.conta_custo_id,nome:(p.nome||'produto')+' (custo)',desc:'Custo — '+(p.nome||'produto')+' (venda sim)'}); });
+  tribs.forEach(t=>{ const val=baseTipo(t.tipo)*parseNum(t.aliquota)/100;
+    push({tipo:'Despesa',valor:val,conta_id:t.conta_id,nome:(t.nome||'tributo'),desc:(t.nome||'tributo')+' — tributo (venda sim)'}); });
+  desps.forEach(x=>{ const val=x.modo==='Percentual'?baseTipo(x.tipo)*parseNum(x.valor)/100:parseNum(x.valor);
+    push({tipo:'Despesa',valor:val,conta_id:x.conta_id,nome:(x.nome||'despesa'),desc:(x.nome||'despesa')+' — despesa (venda sim)'}); });
+  return {items,semConta};
+}
+// Gera (ou regenera) os lançamentos do cenário no fluxo. cfg={sy,sm,N,dia}. silent evita confirm/toast.
+async function simGerarLancsFromCenario(cen,cfg,silent){
+  const {items,semConta}=simDetalhado(cen.dados||{});
+  if(!items.length){ if(!silent)toast('Nenhum item com conta associada para lançar. Associe contas de receita/despesa aos itens.'); return false; }
+  const lote=cen.lote||uuid(); const rows=[];
+  for(let i=0;i<cfg.N;i++){ const idx=cfg.sm+i; const ty=cfg.sy+Math.floor(idx/12); const tm=((idx%12)+12)%12; const dp=simDataAlvo(ty,tm,cfg.dia);
+    items.forEach(it=>{ const conta=G.contas.find(c=>c.id===it.conta_id); const gid=conta?conta.grupo_id:null;
+      rows.push({tipo:it.tipo,valor:Math.abs(it.valor),grupo_id:gid,conta_id:it.conta_id,meio_id:null,data_compra:dp,data_pagamento:dp,descricao:it.desc,parcela_num:1,parcela_total:1,lote,fonte:'Venda: '+cen.nome,origem:'venda_sim',simulado:true}); }); }
+  const _e=authEmp();
+  // se já estava lançado, remove os antigos deste lote antes de reinserir (substituição)
+  if(cen.lote){ let dq=SB.from('fcah_lancamento_tx').delete().eq('lote',cen.lote).eq('origem','venda_sim'); if(_e!=null)dq=dq.eq('empresa_id',_e); const {error:de}=await dq; if(de){toast('Erro ao limpar lançamentos anteriores: '+de.message);return false;} }
+  const {error}=await SB.from('fcah_lancamento_tx').insert(withEmp(rows)); if(error){toast('Erro ao lançar no fluxo: '+error.message);return false;}
+  const {error:ue}=await SB.from('fcah_sim_cenario').update({lote,fluxo_cfg:cfg}).eq('id',cen.id); if(ue){toast('Lançado, mas não gravei o vínculo: '+ue.message);} cen.lote=lote; cen.fluxo_cfg=cfg;
+  await loadLanc(); renderLanc(); renderCaixaGer();
+  if(!silent) toast(rows.length+' lançamento(s) no fluxo ✓'+(semConta.length?(' · '+semConta.length+' item(ns) sem conta ignorado(s)'):''));
+  return true;
+}
+// Diálogo para escolher período (mês/ano início, nº meses, dia) e lançar o cenário no fluxo.
+function simLancarDialog(id){ const cen=(SIM._cenarios||[]).find(x=>x.id===id); if(!cen){toast('Cenário inválido');return;}
+  const {items,semConta}=simDetalhado(cen.dados||{});
+  const cfg=cen.fluxo_cfg||{}; const now=new Date(); const sm=cfg.sm!=null?cfg.sm:now.getMonth(), sy=cfg.sy!=null?cfg.sy:now.getFullYear(); const mo=simMesAnoOpts(sm,sy);
+  const jaLanc=!!cen.lote;
+  const avisos = semConta.length? `<div class="hint full" style="color:var(--amber)">⚠ ${semConta.length} item(ns) sem conta associada serão ignorados: ${esc(semConta.slice(0,6).join(', '))}${semConta.length>6?'…':''}. Associe contas no cadastro dos itens para incluí-los.</div>`:'';
+  const nItens=items.length;
+  openModal((jaLanc?'Atualizar':'Lançar')+' no Fluxo — '+esc(cen.nome), `<div class="form-grid">
+    <div class="fld"><label>Mês inicial</label><select id="flcM">${mo.m}</select></div>
+    <div class="fld"><label>Ano inicial</label><select id="flcY">${mo.y}</select></div>
+    <div class="fld"><label>Nº de meses</label><input type="number" id="flcN" value="${cfg.N||12}" min="1" max="60"></div>
+    <div class="fld"><label>Dia do mês</label><input type="number" id="flcD" value="${cfg.dia||1}" min="1" max="28"></div>
+    <div class="hint full">Serão lançados <b>${nItens}</b> item(ns)/mês (receitas + custos + tributos + despesas), cada um na sua conta, marcados como <b>🧪 SIM</b> e identificados por <b>“Venda: ${esc(cen.nome)}”</b>.${jaLanc?' <b>Este cenário já está no fluxo</b> — os lançamentos anteriores serão substituídos.':''}</div>
+    ${avisos}
+  </div>`, async()=>{ const N=Math.max(1,Math.min(60,parseInt($('#flcN').value)||1)); const dia=Math.max(1,Math.min(28,parseInt($('#flcD').value)||1));
+    const cfg2={sy:+$('#flcY').value, sm:+$('#flcM').value, N, dia};
+    const ok=await simGerarLancsFromCenario(cen,cfg2,false); if(!ok)return false; setTimeout(simCarregarCenario,0); return true; });
+}
+// Sobrescreve o cenário salvo com os itens atuais da tela; se lançado, atualiza o fluxo.
+async function simAtualizarCenario(id){ const cen=(SIM._cenarios||[]).find(x=>x.id===id); if(!cen){toast('Cenário inválido');return;}
+  if(!confirm('Sobrescrever o cenário "'+cen.nome+'" com os produtos, tributos e despesas atuais da tela?'+(cen.lote?' Os lançamentos deste cenário no Fluxo serão atualizados.':'')))return;
+  const c=computeSim(); const dados={cambio:c.cambio,produtos:SIM.produtos,tributos:SIM.tributos,despesas:SIM.despesas};
+  const fatNec=(1-c.vRatio)>0?c.fixas/(1-c.vRatio):null;
+  const {error}=await SB.from('fcah_sim_cenario').update({dados,resultado:{recTot:c.recTot,resTot:c.resTot,margTot:c.margTot,fatNec}}).eq('id',id);
+  if(error){toast('Erro: '+error.message);return;} cen.dados=dados;
+  if(cen.lote && cen.fluxo_cfg){ await simGerarLancsFromCenario(cen,cen.fluxo_cfg,true); }
+  toast('Cenário atualizado ✓'+(cen.lote&&cen.fluxo_cfg?' · fluxo atualizado':'')); simCarregarCenario();
+}
+async function simExcluirCenario(id){ const cen=(SIM._cenarios||[]).find(x=>x.id===id); const temFluxo=cen&&cen.lote;
+  if(!confirm('Excluir este cenário salvo?'+(temFluxo?' Os lançamentos deste cenário no Fluxo Gerencial também serão removidos.':'')))return;
+  if(temFluxo){ const _e=authEmp(); let dq=SB.from('fcah_lancamento_tx').delete().eq('lote',cen.lote).eq('origem','venda_sim'); if(_e!=null)dq=dq.eq('empresa_id',_e); const {error:de}=await dq; if(de){toast('Erro ao remover do fluxo: '+de.message);return;} }
+  const {error}=await SB.from('fcah_sim_cenario').delete().eq('id',id); if(error){toast('Erro: '+error.message);return;}
+  if(temFluxo){ await loadLanc(); renderLanc(); renderCaixaGer(); }
+  toast('Cenário excluído'); simCarregarCenario(); }
 
 /* ---- SVG bar chart (grouped: base vs sim) ---- */
 function barChart(sel, data){
@@ -1004,6 +1083,12 @@ function grupoOptions(sel){return G.grupos.map(g=>`<option value="${g.id}" ${g.i
 function contaOptions(sel){return G.contas.map(c=>`<option value="${c.id}" ${c.id==sel?'selected':''}>${esc(c.nome)}</option>`).join('');}
 const grpNat=id=>{const g=G.grupos.find(x=>x.id==id);return g&&g.natureza?g.natureza:'Despesa';};
 const ctaNat=cid=>{const c=G.contas.find(x=>x.id==cid);return c?grpNat(c.grupo_id):'Despesa';};
+// <select> de contas agrupadas por grupo, opcionalmente filtrado por natureza ('Receita'|'Despesa')
+function contaOptsNat(sel,nat){ const gs=G.grupos.slice().filter(g=>!nat||(g.natureza||'Despesa')===nat).sort((a,b)=>(a.ordem||0)-(b.ordem||0));
+  let o='<option value="">— selecione a conta —</option>';
+  gs.forEach(g=>{ const cs=G.contas.filter(c=>c.grupo_id===g.id&&!c.oculta).sort((a,b)=>(a.ordem||0)-(b.ordem||0) || String(a.nome||'').localeCompare(String(b.nome||''),'pt',{sensitivity:'base'})); if(!cs.length)return;
+    o+=`<optgroup label="${esc(g.nome)} · ${g.natureza||'Despesa'}">`+cs.map(c=>`<option value="${c.id}" ${c.id==sel?'selected':''}>${esc(c.nome)}</option>`).join('')+'</optgroup>'; });
+  return o; }
 function contaOptionsGrouped(sel){return G.grupos.slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0)).map(g=>{const cs=G.contas.filter(c=>c.grupo_id===g.id).sort((a,b)=>(a.ordem||0)-(b.ordem||0) || String(a.nome||'').localeCompare(String(b.nome||''),'pt',{sensitivity:'base'}));if(!cs.length)return '';return `<optgroup label="${esc(g.nome)} · ${g.natureza||'Despesa'}">`+cs.map(c=>`<option value="${c.id}" ${c.id==sel?'selected':''}>${esc(c.nome)}</option>`).join('')+'</optgroup>';}).join('');}
 function meioOptions(sel){return '<option value="">— nenhum —</option>'+G.meios.map(m=>`<option value="${m.id}" ${m.id==sel?'selected':''}>${esc(m.nome)}</option>`).join('');}
 
@@ -1679,7 +1764,7 @@ async function simLanGerar(){
   toast(`${rows.length} lançamento(s) simulado(s) gerado(s) ✓`);
 }
 function renderSimSalvas(){ const box=$('#slSalvas'); if(!box)return;
-  const sims=G.lanc.filter(l=>l.simulado);
+  const sims=G.lanc.filter(l=>l.simulado && l.origem!=='venda_sim'); // vendas-sim são geridas na aba Simulador de Vendas
   const byLote={}; sims.forEach(l=>{ const k=l.lote||('f:'+(l.fonte||'?')); (byLote[k]=byLote[k]||{nome:l.fonte||'(sem nome)',lote:l.lote,rows:[]}).rows.push(l); });
   const grupos=Object.values(byLote).sort((a,b)=>String(b.rows[0].criado_em||'').localeCompare(String(a.rows[0].criado_em||'')));
   if(!grupos.length){ box.innerHTML='<div class="empty">Nenhuma simulação gerada ainda.</div>'; return; }
