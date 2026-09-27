@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08p)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08q)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -74,6 +74,8 @@ table{width:100%;border-collapse:collapse;font-size:12.5px}
 th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line)}
 th:first-child,td:first-child{text-align:left}
 thead th{color:var(--txt2);font-weight:650;font-size:11px;text-transform:uppercase;letter-spacing:.3px;position:sticky;top:0;background:var(--panel);z-index:2}
+/* colunas de meses futuros (projeção) no Fluxo Gerencial — leve tom azul sobre qualquer fundo */
+#cgTbl td.fut,#cgTbl th.fut{background-image:linear-gradient(rgba(56,189,248,.12),rgba(56,189,248,.12))}
 tbody tr:hover{background:var(--panel2)}
 tr.grp td{background:var(--panel2);font-weight:700;color:var(--txt)}
 tr.tot td{font-weight:750;border-top:2px solid var(--line2)}
@@ -210,7 +212,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08p · fluxo</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08q · futuro</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -1735,8 +1737,11 @@ function renderCaixaGer(){
   // Totalizadores (Receitas/Despesas/Saldo) removidos do resumo — mantém-se apenas Lançamentos.
   $('#cgKpis').innerHTML=
     kpiCard('Lançamentos ('+perLbl+')',fmt.format(inWin.length),null,'var(--accent)');
-  const cgc=(v,scope,id,m,cnt)=>{ if(!v){ if(cnt>0) return `<td class="money cgcell" style="color:var(--amber);font-weight:600" data-scope="${scope}" data-id="${id}" data-mes="${m}" title="Saldo zero com ${cnt} lançamento(s) — clique para ver/editar">0 ⚠</td>`; return '<td class="muted">—</td>'; } const c=v<0?'neg':'pos'; return `<td class="money ${c} cgcell" data-scope="${scope}" data-id="${id}" data-mes="${m}" title="ver lançamentos">${fmt.format(v)}</td>`; };
-  let h='<thead><tr><th>Grupo / Conta</th>'+months.map(mm=>`<th>${mm.label}</th>`).join('')+'<th>Total</th></tr></thead><tbody>';
+  // Meses futuros (mês/ano > mês/ano atual) recebem leve tom p/ sinalizar projeção
+  const nowAbs=(()=>{const d=new Date();return d.getFullYear()*12+d.getMonth();})();
+  const futCol=m=>(typeof m==='number')&&(months[m].y*12+months[m].m>nowAbs);
+  const cgc=(v,scope,id,m,cnt)=>{ const f=futCol(m)?' fut':''; if(!v){ if(cnt>0) return `<td class="money cgcell${f}" style="color:var(--amber);font-weight:600" data-scope="${scope}" data-id="${id}" data-mes="${m}" title="Saldo zero com ${cnt} lançamento(s) — clique para ver/editar">0 ⚠</td>`; return `<td class="muted${f}">—</td>`; } const c=v<0?'neg':'pos'; return `<td class="money ${c} cgcell${f}" data-scope="${scope}" data-id="${id}" data-mes="${m}" title="ver lançamentos">${fmt.format(v)}</td>`; };
+  let h='<thead><tr><th>Grupo / Conta</th>'+months.map((mm,m)=>`<th class="${futCol(m)?'fut':''}"${futCol(m)?' title="Mês futuro (projeção)"':''}>${mm.label}</th>`).join('')+'<th>Total</th></tr></thead><tbody>';
   G.grupos.slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0)).forEach(g=>{
     const ga=gmap[g.id]||new Array(12).fill(0); const gc=gcnt[g.id]||new Array(12).fill(0); const gt=sumA(ga);
     h+=`<tr class="grp"><td>${esc(g.nome)}</td>${ga.map((v,m)=>cgc(v,'grupo',g.id,m,gc[m])).join('')}${cgc(gt,'grupo',g.id,'all',sumA(gc))}</tr>`;
