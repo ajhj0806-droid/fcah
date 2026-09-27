@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08t)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08v)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -212,7 +212,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08t · venda→fluxo</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08v · simulador venda</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -257,14 +257,11 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
 <section class="view" id="v-sim">
   <div class="row" style="margin-bottom:14px;gap:14px;align-items:stretch">
     <div class="panel" style="flex:1;min-width:300px">
-      <h3>🎯 Meta da simulação</h3>
-      <p class="desc">Quanto precisa faturar por mês para cobrir as despesas ou atingir uma margem-alvo.</p>
+      <div class="toolbar" style="margin-bottom:10px"><h3 style="margin:0">🎯 Meta da simulação</h3><div class="grow"></div><button class="btn ghost" id="simCarregar">📂 Ver vendas salvas</button></div>
       <div class="toolbar" style="margin-bottom:0">
         <div class="fld"><label>Câmbio USD→BRL</label><input type="number" id="simCambio" value="5.15" step="0.01" style="width:110px"></div>
-        <div class="grow"></div>
-        <input type="text" id="simCenNome" placeholder="nome do cenário…" style="width:150px">
-        <button class="btn sec" id="simSalvar">💾 Salvar cenário</button>
-        <button class="btn ghost" id="simCarregar">📂 Cenários</button>
+        <input type="text" id="simCenNome" placeholder="nome do cenário…" style="flex:1;min-width:200px">
+        <button class="btn sec" id="simSalvar">💾 Salvar Venda</button>
       </div>
       <div class="hint" id="simCenAtual" style="margin-top:10px;font-size:12.5px">Cenário: <b>(não salvo)</b></div>
     </div>
@@ -336,8 +333,8 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
       <div class="grow"></div>
       <button class="btn ghost" id="cgExport">⭳ Exportar CSV</button>
     </div>
-    <div class="kpis" id="cgKpis" style="margin-bottom:14px"></div>
-    <div class="tblwrap" style="max-height:calc(100vh - 250px);overflow:auto"><table id="cgTbl"></table></div>
+    <div class="kpis" id="cgKpis"></div>
+    <div class="tblwrap" style="max-height:calc(100vh - 210px);overflow:auto"><table id="cgTbl"></table></div>
   </div>
 </section>
 
@@ -567,11 +564,12 @@ function renderSim(){
   const denom=1-c.vRatio;
   const fatNec = denom>0 ? c.fixas/denom : Infinity;
   const fator = c.recTot>0 && isFinite(fatNec) ? fatNec/c.recTot : Infinity;
+  const despTot=c.varTot+c.fixas; // despesas totais/mês = custos + tributos + despesas variáveis + fixas
   $('#simKpis').innerHTML=
-    kpiCard('Faturamento atual/mês','R$ '+fmt.format(c.recTot),null,'var(--accent)')+
-    kpiCard('Resultado/mês','R$ '+fmt.format(c.resTot),null,c.resTot>=0?'#22c55e':'#ef4444')+
-    kpiCard('Margem atual',pct.format(c.margTot),null,'#f59e0b')+
-    kpiCard('Faturar p/ cobrir despesas', isFinite(fatNec)?'R$ '+fmt.format(fatNec):'—',null,'#7c3aed');
+    kpiCard('Faturamento da venda','R$ '+fmt.format(c.recTot),null,'var(--accent)')+
+    kpiCard('Despesas','R$ '+fmt.format(despTot),null,'#f87171')+
+    kpiCard('Resultado da venda','R$ '+fmt.format(c.resTot),null,c.resTot>=0?'#22c55e':'#ef4444')+
+    kpiCard('Margem da venda',pct.format(c.margTot),null,'#f59e0b');
   // 1. Produtos
   const ctaTag=id=> id? esc(ctaNome(id)) : '<span style="color:var(--amber)" title="Associe uma conta para lançar no fluxo">⚠ sem conta</span>';
   let h='<thead><tr><th>Produto/Serviço</th><th>Tipo</th><th>Moeda</th><th>Vlr unit</th><th>Custo unit</th><th>Qtd/mês</th><th>Receita (R$)</th><th>Custo (R$)</th><th>Conta (fluxo)</th><th></th></tr></thead><tbody>';
@@ -681,7 +679,7 @@ async function simCarregarCenario(){
     lista.forEach(c=>{ const r=c.resultado||{}; const fx=c.lote?'<span class="badge rec" title="Este cenário está lançado no Fluxo Gerencial">no fluxo</span>':'<span class="muted">—</span>';
       body+=`<tr style="cursor:default"><td data-load="${c.id}" style="cursor:pointer"><b>${esc(c.nome)}</b></td><td class="muted">${fmtData(c.criado_em)} ${String(c.criado_em).slice(11,16)}</td><td class="money">R$ ${fmt.format(r.recTot||0)}</td><td>${r.margTot!=null?pct.format(r.margTot):'—'}</td><td>${fx}</td><td class="acts" style="white-space:nowrap"><button class="actbtn" style="width:auto;padding:0 10px" data-fluxocen="${c.id}" title="Lançar/atualizar as receitas e despesas deste cenário no Fluxo Gerencial">▶ Fluxo</button> <button class="actbtn" style="width:auto;padding:0 10px" data-updcen="${c.id}" title="Sobrescrever este cenário com os itens atuais da tela (e atualizar o fluxo, se lançado)">✎ Atualizar</button> <button class="actbtn del" data-delcen="${c.id}" title="Excluir cenário (e seus lançamentos no fluxo)">✕ Excluir</button></td></tr>`; });
     body+='</tbody></table></div>'; }
-  openModal('📂 Cenários salvos',body,null); $('#modalCancel').textContent='Fechar';
+  openModal('📂 Vendas salvas',body,null); $('#modalCancel').textContent='Fechar';
   { const mw=document.querySelector('#modal .modal'); if(mw)mw.classList.add('wide'); }
   const tb=$('#simCenTbl');
   if(tb) tb.addEventListener('click',e=>{ const fx=e.target.closest('button[data-fluxocen]'); if(fx){e.stopPropagation();simLancarDialog(+fx.dataset.fluxocen);return;}
@@ -1820,9 +1818,8 @@ function renderCaixaGer(){
   const colTot=new Array(12).fill(0); Object.values(gmap).forEach(a=>a.forEach((v,i)=>colTot[i]+=v)); semArr.forEach((v,i)=>colTot[i]+=v); semGrupoArr.forEach((v,i)=>colTot[i]+=v);
   const colCnt=new Array(12).fill(0); Object.values(gcnt).forEach(a=>a.forEach((v,i)=>colCnt[i]+=v)); semCnt.forEach((v,i)=>colCnt[i]+=v); semGrupoCnt.forEach((v,i)=>colCnt[i]+=v);
   const sumA=a=>a.reduce((s,v)=>s+v,0);
-  // Totalizadores (Receitas/Despesas/Saldo) removidos do resumo — mantém-se apenas Lançamentos.
-  $('#cgKpis').innerHTML=
-    kpiCard('Lançamentos ('+perLbl+')',fmt.format(inWin.length),null,'var(--accent)');
+  // Sem totalizadores no topo do Fluxo Gerencial (removidos a pedido).
+  $('#cgKpis').innerHTML='';
   // Meses futuros (mês/ano > mês/ano atual) recebem leve tom p/ sinalizar projeção
   const nowAbs=(()=>{const d=new Date();return d.getFullYear()*12+d.getMonth();})();
   const futCol=m=>(typeof m==='number')&&(months[m].y*12+months[m].m>nowAbs);
