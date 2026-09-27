@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08r)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08s)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -212,7 +212,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08r · venda→fluxo</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08s · venda→fluxo</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -682,6 +682,7 @@ async function simCarregarCenario(){
       body+=`<tr style="cursor:default"><td data-load="${c.id}" style="cursor:pointer"><b>${esc(c.nome)}</b></td><td class="muted">${fmtData(c.criado_em)} ${String(c.criado_em).slice(11,16)}</td><td class="money">R$ ${fmt.format(r.recTot||0)}</td><td>${r.margTot!=null?pct.format(r.margTot):'—'}</td><td>${fx}</td><td class="acts" style="white-space:nowrap"><button class="actbtn" data-fluxocen="${c.id}" title="Lançar/atualizar as receitas e despesas deste cenário no Fluxo Gerencial">▶ Fluxo</button> <button class="actbtn" data-updcen="${c.id}" title="Sobrescrever este cenário com os itens atuais da tela (e atualizar o fluxo, se lançado)">✎ Atualizar</button> <button class="actbtn del" data-delcen="${c.id}" title="Excluir cenário (e seus lançamentos no fluxo)">✕</button></td></tr>`; });
     body+='</tbody></table></div>'; }
   openModal('📂 Cenários salvos',body,null); $('#modalCancel').textContent='Fechar';
+  { const mw=document.querySelector('#modal .modal'); if(mw)mw.classList.add('wide'); }
   const tb=$('#simCenTbl');
   if(tb) tb.addEventListener('click',e=>{ const fx=e.target.closest('button[data-fluxocen]'); if(fx){e.stopPropagation();simLancarDialog(+fx.dataset.fluxocen);return;}
     const up=e.target.closest('button[data-updcen]'); if(up){e.stopPropagation();simAtualizarCenario(+up.dataset.updcen);return;}
@@ -722,12 +723,12 @@ function simDetalhado(d){ d=d||{};
   const items=[], semConta=[];
   const push=o=>{ if(!(o.valor>0))return; if(o.conta_id==null){ if(!semConta.includes(o.nome))semConta.push(o.nome); return; } items.push(o); };
   prods.forEach(p=>{ const rec=parseNum(p.qtd_padrao)*conv(p.valor_venda,p.moeda); const cst=parseNum(p.qtd_padrao)*conv(p.custo_unit,p.moeda);
-    push({tipo:'Receita',valor:rec,conta_id:p.conta_receita_id,nome:(p.nome||'produto')+' (receita)',desc:'Receita — '+(p.nome||'produto')+' (venda sim)'});
-    push({tipo:'Despesa',valor:cst,conta_id:p.conta_custo_id,nome:(p.nome||'produto')+' (custo)',desc:'Custo — '+(p.nome||'produto')+' (venda sim)'}); });
+    push({tipo:'Receita',valor:rec,conta_id:p.conta_receita_id,nome:(p.nome||'produto')+' (receita)',desc:'Receita — '+(p.nome||'produto')});
+    push({tipo:'Despesa',valor:cst,conta_id:p.conta_custo_id,nome:(p.nome||'produto')+' (custo)',desc:'Custo — '+(p.nome||'produto')}); });
   tribs.forEach(t=>{ const val=baseTipo(t.tipo)*parseNum(t.aliquota)/100;
-    push({tipo:'Despesa',valor:val,conta_id:t.conta_id,nome:(t.nome||'tributo'),desc:(t.nome||'tributo')+' — tributo (venda sim)'}); });
+    push({tipo:'Despesa',valor:val,conta_id:t.conta_id,nome:(t.nome||'tributo'),desc:'Tributo — '+(t.nome||'tributo')}); });
   desps.forEach(x=>{ const val=x.modo==='Percentual'?baseTipo(x.tipo)*parseNum(x.valor)/100:parseNum(x.valor);
-    push({tipo:'Despesa',valor:val,conta_id:x.conta_id,nome:(x.nome||'despesa'),desc:(x.nome||'despesa')+' — despesa (venda sim)'}); });
+    push({tipo:'Despesa',valor:val,conta_id:x.conta_id,nome:(x.nome||'despesa'),desc:'Despesa — '+(x.nome||'despesa')}); });
   return {items,semConta};
 }
 // Gera (ou regenera) os lançamentos do cenário no fluxo. cfg={sy,sm,N,dia}. silent evita confirm/toast.
@@ -737,7 +738,7 @@ async function simGerarLancsFromCenario(cen,cfg,silent){
   const lote=cen.lote||uuid(); const rows=[];
   for(let i=0;i<cfg.N;i++){ const idx=cfg.sm+i; const ty=cfg.sy+Math.floor(idx/12); const tm=((idx%12)+12)%12; const dp=simDataAlvo(ty,tm,cfg.dia);
     items.forEach(it=>{ const conta=G.contas.find(c=>c.id===it.conta_id); const gid=conta?conta.grupo_id:null;
-      rows.push({tipo:it.tipo,valor:Math.abs(it.valor),grupo_id:gid,conta_id:it.conta_id,meio_id:null,data_compra:dp,data_pagamento:dp,descricao:it.desc,parcela_num:1,parcela_total:1,lote,fonte:'Venda: '+cen.nome,origem:'venda_sim',simulado:true}); }); }
+      rows.push({tipo:it.tipo,valor:Math.abs(it.valor),grupo_id:gid,conta_id:it.conta_id,meio_id:null,data_compra:dp,data_pagamento:dp,descricao:it.desc+' · Venda: '+cen.nome,parcela_num:1,parcela_total:1,lote,fonte:'Venda: '+cen.nome,origem:'venda_sim',simulado:true}); }); }
   const _e=authEmp();
   // se já estava lançado, remove os antigos deste lote antes de reinserir (substituição)
   if(cen.lote){ let dq=SB.from('fcah_lancamento_tx').delete().eq('lote',cen.lote).eq('origem','venda_sim'); if(_e!=null)dq=dq.eq('empresa_id',_e); const {error:de}=await dq; if(de){toast('Erro ao limpar lançamentos anteriores: '+de.message);return false;} }
