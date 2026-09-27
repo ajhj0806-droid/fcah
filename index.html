@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08s)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08t)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -212,7 +212,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08s · venda→fluxo</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08t · venda→fluxo</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -679,7 +679,7 @@ async function simCarregarCenario(){
   if(!lista.length) body='<div class="empty">Nenhum cenário salvo ainda. Ajuste as quantidades/câmbio e clique em “💾 Salvar cenário”.</div>';
   else{ body='<div class="small muted" style="margin-bottom:8px">Clique no nome do cenário para carregá-lo na tela. Use <b>▶ Fluxo</b> para lançar/atualizar as receitas e despesas no Fluxo Gerencial.</div><div class="tblwrap"><table id="simCenTbl"><thead><tr><th>Cenário</th><th>Salvo em</th><th>Faturamento</th><th>Margem</th><th>No fluxo</th><th></th></tr></thead><tbody>';
     lista.forEach(c=>{ const r=c.resultado||{}; const fx=c.lote?'<span class="badge rec" title="Este cenário está lançado no Fluxo Gerencial">no fluxo</span>':'<span class="muted">—</span>';
-      body+=`<tr style="cursor:default"><td data-load="${c.id}" style="cursor:pointer"><b>${esc(c.nome)}</b></td><td class="muted">${fmtData(c.criado_em)} ${String(c.criado_em).slice(11,16)}</td><td class="money">R$ ${fmt.format(r.recTot||0)}</td><td>${r.margTot!=null?pct.format(r.margTot):'—'}</td><td>${fx}</td><td class="acts" style="white-space:nowrap"><button class="actbtn" data-fluxocen="${c.id}" title="Lançar/atualizar as receitas e despesas deste cenário no Fluxo Gerencial">▶ Fluxo</button> <button class="actbtn" data-updcen="${c.id}" title="Sobrescrever este cenário com os itens atuais da tela (e atualizar o fluxo, se lançado)">✎ Atualizar</button> <button class="actbtn del" data-delcen="${c.id}" title="Excluir cenário (e seus lançamentos no fluxo)">✕</button></td></tr>`; });
+      body+=`<tr style="cursor:default"><td data-load="${c.id}" style="cursor:pointer"><b>${esc(c.nome)}</b></td><td class="muted">${fmtData(c.criado_em)} ${String(c.criado_em).slice(11,16)}</td><td class="money">R$ ${fmt.format(r.recTot||0)}</td><td>${r.margTot!=null?pct.format(r.margTot):'—'}</td><td>${fx}</td><td class="acts" style="white-space:nowrap"><button class="actbtn" style="width:auto;padding:0 10px" data-fluxocen="${c.id}" title="Lançar/atualizar as receitas e despesas deste cenário no Fluxo Gerencial">▶ Fluxo</button> <button class="actbtn" style="width:auto;padding:0 10px" data-updcen="${c.id}" title="Sobrescrever este cenário com os itens atuais da tela (e atualizar o fluxo, se lançado)">✎ Atualizar</button> <button class="actbtn del" data-delcen="${c.id}" title="Excluir cenário (e seus lançamentos no fluxo)">✕ Excluir</button></td></tr>`; });
     body+='</tbody></table></div>'; }
   openModal('📂 Cenários salvos',body,null); $('#modalCancel').textContent='Fechar';
   { const mw=document.querySelector('#modal .modal'); if(mw)mw.classList.add('wide'); }
