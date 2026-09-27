@@ -255,17 +255,15 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
 
 <!-- ============ SIMULADOR ============ -->
 <section class="view" id="v-sim">
-  <div class="row" style="margin-bottom:14px;gap:14px;align-items:stretch">
-    <div class="panel" style="flex:1;min-width:300px">
-      <div class="toolbar" style="margin-bottom:10px"><h3 style="margin:0">🎯 Meta da simulação</h3><div class="grow"></div><button class="btn ghost" id="simCarregar">📂 Ver vendas salvas</button></div>
-      <div class="toolbar" style="margin-bottom:0">
-        <div class="fld"><label>Câmbio USD→BRL</label><input type="number" id="simCambio" value="5.15" step="0.01" style="width:110px"></div>
-        <input type="text" id="simCenNome" placeholder="nome do cenário…" style="flex:1;min-width:200px">
-        <button class="btn sec" id="simSalvar">💾 Salvar Venda</button>
-      </div>
-      <div class="hint" id="simCenAtual" style="margin-top:10px;font-size:12.5px">Cenário: <b>(não salvo)</b></div>
+  <div class="panel" style="margin-bottom:14px">
+    <div class="toolbar" style="margin-bottom:0;align-items:flex-end;flex-wrap:wrap;gap:10px">
+      <h3 style="margin:0 6px 0 0;align-self:center">🎯 Meta da simulação</h3>
+      <div class="fld"><label>Câmbio USD→BRL</label><input type="number" id="simCambio" value="5.15" step="0.01" style="width:100px"></div>
+      <input type="text" id="simCenNome" placeholder="nome do cenário…" style="flex:1;min-width:180px">
+      <button class="btn sec" id="simSalvar">💾 Salvar Venda</button>
+      <button class="btn ghost" id="simCarregar">📂 Ver vendas salvas</button>
+      <span class="hint" id="simCenAtual" style="width:100%;margin-top:2px;font-size:12.5px">Cenário: <b>(não salvo)</b></span>
     </div>
-    <div class="kpis" style="flex:1.5" id="simKpis"></div>
   </div>
   <div class="flex2">
     <div class="panel">
