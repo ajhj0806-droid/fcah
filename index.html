@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08y)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08z)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -213,7 +213,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08y · converter venda</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08z · tributo por produto</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -266,25 +266,18 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
       <span class="hint" id="simCenAtual" style="width:100%;margin-top:2px;font-size:12.5px">Cenário: <b>(não salvo)</b></span>
     </div>
   </div>
-  <div class="simrow">
-    <div class="panel">
-      <div class="toolbar" style="margin-bottom:8px"><h3 style="margin:0">1. Produtos e serviços vendidos / mês</h3><div class="grow"></div><button class="btn" id="simNovoProd">＋ Produto/Serviço</button></div>
-      <p class="desc">Edite a <b>quantidade/mês</b> direto na tabela. Valores em USD são convertidos pelo câmbio.</p>
-      <div class="tblwrap"><table id="simProdTbl"></table></div>
-    </div>
-    <div class="panel">
-      <div class="toolbar" style="margin-bottom:8px"><h3 style="margin:0">2. Tributos sobre a venda</h3><div class="grow"></div><button class="btn sec" id="simNovoTrib">＋ Tributo</button></div>
-      <p class="desc">Edite a <b>alíquota %</b> direto na tabela.</p>
-      <div class="tblwrap"><table id="simTribTbl"></table></div>
-    </div>
+  <div class="panel">
+    <div class="toolbar" style="margin-bottom:8px"><h3 style="margin:0">1. Produtos e serviços vendidos / mês</h3><div class="grow"></div><button class="btn" id="simNovoProd">＋ Produto/Serviço</button></div>
+    <p class="desc">Edite a <b>quantidade/mês</b> e a <b>alíquota de tributo %</b> direto na tabela. O tributo incide sobre a receita de cada produto. Valores em USD são convertidos pelo câmbio.</p>
+    <div class="tblwrap"><table id="simProdTbl"></table></div>
   </div>
   <div class="panel" style="margin-top:14px">
-    <div class="toolbar" style="margin-bottom:8px"><h3 style="margin:0">3. Despesas</h3><div class="grow"></div><button class="btn sec" id="simNovaDesp">＋ Despesa</button></div>
+    <div class="toolbar" style="margin-bottom:8px"><h3 style="margin:0">2. Despesas</h3><div class="grow"></div><button class="btn sec" id="simNovaDesp">＋ Despesa</button></div>
     <p class="desc">% incide sobre o faturamento; "Fixa" é valor em R$/mês independente da venda.</p>
     <div class="tblwrap"><table id="simDespTbl"></table></div>
   </div>
   <div class="panel" style="margin-top:14px">
-    <h3>4. Resultado (Receitas − Tributos − Custos − Despesas)</h3>
+    <h3>3. Resultado (Receitas − Tributos − Custos − Despesas)</h3>
     <div class="tblwrap"><table id="simResTbl"></table></div>
     <div class="hint" id="simMetaHint" style="margin-top:10px"></div>
   </div>
@@ -529,24 +522,23 @@ function sumArr(a,f){return a.reduce((s,x)=>s+f(x),0);}
 const SIM={produtos:[],tributos:[],despesas:[]};
 async function loadSim(){ if(!SB)return;
   const emp=authEmp(); const scope=q=>(emp!=null?q.eq('empresa_id',emp):q);
-  const [p,t,d]=await Promise.all([
+  const [p,d]=await Promise.all([
     scope(SB.from('fcah_sim_produto').select('*')).order('id'),
-    scope(SB.from('fcah_sim_tributo').select('*')).order('id'),
     scope(SB.from('fcah_sim_despesa').select('*')).order('id')]);
-  SIM.produtos=p.data||[];SIM.tributos=t.data||[];SIM.despesas=d.data||[];
+  SIM.produtos=p.data||[];SIM.tributos=[];SIM.despesas=d.data||[]; // tributo agora é por produto (aliquota na própria linha)
 }
 function computeSim(){
   const cambio=parseNum($('#simCambio').value)||1;
   const conv=(v,moeda)=>v*(moeda==='USD'?cambio:1);
-  const R={Venda:{rec:0,custo:0},['Serviço']:{rec:0,custo:0}};
-  SIM.produtos.forEach(p=>{ const t=p.tipo==='Serviço'?'Serviço':'Venda'; const q=parseNum(p.qtd_padrao);
-    R[t].rec+=q*conv(p.valor_venda,p.moeda); R[t].custo+=q*conv(p.custo_unit,p.moeda); });
-  const tribRate=t=>SIM.tributos.filter(x=>x.tipo===t||x.tipo==='Ambos').reduce((s,x)=>s+parseNum(x.aliquota),0)/100;
+  // Tributo agora é POR PRODUTO: cada produto tem sua própria alíquota (% da sua receita).
+  const R={Venda:{rec:0,custo:0,trib:0},['Serviço']:{rec:0,custo:0,trib:0}};
+  SIM.produtos.forEach(p=>{ const t=p.tipo==='Serviço'?'Serviço':'Venda'; const q=parseNum(p.qtd_padrao); const rec=q*conv(p.valor_venda,p.moeda);
+    R[t].rec+=rec; R[t].custo+=q*conv(p.custo_unit,p.moeda); R[t].trib+=rec*parseNum(p.aliquota||0)/100; });
   const despPct=t=>SIM.despesas.filter(x=>x.modo==='Percentual'&&(x.tipo===t||x.tipo==='Ambos')).reduce((s,x)=>s+parseNum(x.valor),0)/100;
   const despValTipo=t=>SIM.despesas.filter(x=>x.modo==='Valor'&&x.tipo===t).reduce((s,x)=>s+parseNum(x.valor),0);
   const fixas=SIM.despesas.filter(x=>x.tipo==='Fixa').reduce((s,x)=>s+parseNum(x.valor),0);
   const per={};
-  ['Venda','Serviço'].forEach(t=>{ const rec=R[t].rec,custo=R[t].custo; const trib=rec*tribRate(t); const despV=rec*despPct(t)+despValTipo(t);
+  ['Venda','Serviço'].forEach(t=>{ const rec=R[t].rec,custo=R[t].custo; const trib=R[t].trib; const despV=rec*despPct(t)+despValTipo(t);
     per[t]={rec,custo,trib,desp:despV,res:rec-custo-trib-despV}; });
   const recTot=per.Venda.rec+per['Serviço'].rec;
   const varTot=per.Venda.custo+per['Serviço'].custo+per.Venda.trib+per['Serviço'].trib+per.Venda.desp+per['Serviço'].desp;
@@ -565,20 +557,16 @@ function renderSim(){
   // (KPIs do topo removidos — as mesmas informações estão na tabela “4. Resultado”.)
   // 1. Produtos
   const ctaTag=id=> id? esc(ctaNome(id)) : '<span style="color:var(--amber)" title="Associe uma conta para lançar no fluxo">⚠ sem conta</span>';
-  let h='<thead><tr><th style="min-width:190px">Produto/Serviço</th><th>Tipo</th><th>Moeda</th><th>Vlr unit</th><th>Custo unit</th><th>Qtd/mês</th><th>Receita (R$)</th><th>Custo (R$)</th><th style="min-width:150px">Conta (fluxo)</th><th></th></tr></thead><tbody>';
-  if(!SIM.produtos.length) h+='<tr><td colspan="10"><div class="empty">Nenhum produto. Clique em “＋ Produto/Serviço”.</div></td></tr>';
-  SIM.produtos.forEach(p=>{ const rec=parseNum(p.qtd_padrao)*p.valor_venda*(p.moeda==='USD'?c.cambio:1); const cu=parseNum(p.qtd_padrao)*p.custo_unit*(p.moeda==='USD'?c.cambio:1);
+  let h='<thead><tr><th style="min-width:180px">Produto/Serviço</th><th>Tipo</th><th>Moeda</th><th>Vlr unit</th><th>Custo unit</th><th>Qtd/mês</th><th>Receita (R$)</th><th>Custo (R$)</th><th>Alíq %</th><th>Tributo (R$)</th><th style="min-width:150px">Conta (fluxo)</th><th></th></tr></thead><tbody>';
+  if(!SIM.produtos.length) h+='<tr><td colspan="12"><div class="empty">Nenhum produto. Clique em “＋ Produto/Serviço”.</div></td></tr>';
+  SIM.produtos.forEach(p=>{ const rec=parseNum(p.qtd_padrao)*p.valor_venda*(p.moeda==='USD'?c.cambio:1); const cu=parseNum(p.qtd_padrao)*p.custo_unit*(p.moeda==='USD'?c.cambio:1); const trib=rec*parseNum(p.aliquota||0)/100;
     h+=`<tr><td>${esc(p.nome)}</td><td><span class="badge ${p.tipo==='Serviço'?'rec':'desp'}">${esc(p.tipo)}</span></td><td>${p.moeda}</td><td>${fmt2.format(p.valor_venda)}</td><td>${fmt2.format(p.custo_unit)}</td>`+
-      `<td><input type="number" class="simqtd" data-id="${p.id}" value="${p.qtd_padrao}" style="width:90px"></td><td class="money pos">${fmt.format(rec)}</td><td class="money neg">${fmt.format(cu)}</td>`+
-      `<td class="small">R: ${ctaTag(p.conta_receita_id)}<br>C: ${ctaTag(p.conta_custo_id)}</td>`+
+      `<td><input type="number" class="simqtd" data-id="${p.id}" value="${p.qtd_padrao}" style="width:80px"></td><td class="money pos">${fmt.format(rec)}</td><td class="money neg">${fmt.format(cu)}</td>`+
+      `<td><input type="number" class="simaliq" data-id="${p.id}" value="${p.aliquota||0}" step="0.01" style="width:64px"> %</td><td class="money neg">${trib?fmt.format(trib):'—'}</td>`+
+      `<td class="small">R: ${ctaTag(p.conta_receita_id)}<br>C: ${ctaTag(p.conta_custo_id)}<br>T: ${p.aliquota>0?ctaTag(p.conta_tributo_id):'<span class="muted">—</span>'}</td>`+
       `<td class="acts"><button class="actbtn" data-sact="prod-edit" data-id="${p.id}">✎</button> <button class="actbtn del" data-sact="prod-del" data-id="${p.id}">✕</button></td></tr>`; });
   h+='</tbody>';$('#simProdTbl').innerHTML=h;
-  // 2. Tributos
-  h='<thead><tr><th style="min-width:150px">Tributo</th><th>Alíquota %</th><th>Incide em</th><th style="min-width:130px">Conta (fluxo)</th><th></th></tr></thead><tbody>';
-  if(!SIM.tributos.length) h+='<tr><td colspan="5"><div class="empty">Nenhum tributo.</div></td></tr>';
-  SIM.tributos.forEach(t=>{ h+=`<tr><td>${esc(t.nome)}</td><td><input type="number" class="simaliq" data-id="${t.id}" value="${t.aliquota}" step="0.01" style="width:80px"> %</td><td>${esc(t.tipo)}</td><td class="small">${ctaTag(t.conta_id)}</td><td class="acts"><button class="actbtn" data-sact="trib-edit" data-id="${t.id}">✎</button> <button class="actbtn del" data-sact="trib-del" data-id="${t.id}">✕</button></td></tr>`; });
-  h+='</tbody>';$('#simTribTbl').innerHTML=h;
-  // 3. Despesas
+  // 2. Despesas
   const recV=c.per.Venda.rec, recS=c.per['Serviço'].rec;
   const despValor=d=>{ if(d.tipo==='Fixa')return parseNum(d.valor); const base=d.tipo==='Ambos'?(recV+recS):(d.tipo==='Serviço'?recS:recV); return d.modo==='Percentual'? base*parseNum(d.valor)/100 : parseNum(d.valor); };
   h='<thead><tr><th style="min-width:160px">Despesa</th><th>Modo</th><th>Valor / %</th><th>Valor (R$)</th><th>Tipo</th><th style="min-width:150px">Conta (fluxo)</th><th></th></tr></thead><tbody>';
@@ -610,7 +598,7 @@ function renderSim(){
 }
 /* --- edição de quantidade e ações --- */
 async function simSaveQtd(id,val){ const {error}=await SB.from('fcah_sim_produto').update({qtd_padrao:parseNum(val)}).eq('id',id); if(error){toast('Erro: '+error.message);return;} const p=SIM.produtos.find(x=>x.id===id); if(p)p.qtd_padrao=parseNum(val); SIM._cen=null; renderSim(); }
-async function simSaveAliq(id,val){ const {error}=await SB.from('fcah_sim_tributo').update({aliquota:parseNum(val)}).eq('id',id); if(error){toast('Erro: '+error.message);return;} const t=SIM.tributos.find(x=>x.id===id); if(t)t.aliquota=parseNum(val); SIM._cen=null; renderSim(); }
+async function simSaveAliq(id,val){ const {error}=await SB.from('fcah_sim_produto').update({aliquota:parseNum(val)}).eq('id',id); if(error){toast('Erro: '+error.message);return;} const p=SIM.produtos.find(x=>x.id===id); if(p)p.aliquota=parseNum(val); SIM._cen=null; renderSim(); }
 function simTblClick(e){ const b=e.target.closest('button[data-sact]'); if(!b)return; const id=+b.dataset.id,a=b.dataset.sact;
   if(a==='prod-edit')simFormProd(SIM.produtos.find(x=>x.id===id));
   else if(a==='prod-del')simDel('fcah_sim_produto',id,'produtos');
@@ -630,10 +618,12 @@ function simFormProd(p){ p=p||{};
     <div class="fld"><label>Custo unitário</label><input type="number" id="sp_custo" step="0.01" value="${p.custo_unit||''}"></div>
     <div class="fld"><label>Quantidade / mês</label><input type="number" id="sp_qtd" value="${p.qtd_padrao||0}"></div>
     <div class="fld"><label>Unidade</label><input type="text" id="sp_un" value="${esc(p.unidade)}"></div>
+    <div class="fld"><label>Alíquota de tributo %</label><input type="number" id="sp_aliq" step="0.01" value="${p.aliquota||0}"></div>
     <div class="fld"><label>Conta de RECEITA (fluxo)</label><select id="sp_cr">${contaOptsNat(p.conta_receita_id,'Receita')}</select></div>
     <div class="fld"><label>Conta de CUSTO (fluxo)</label><select id="sp_cc">${contaOptsNat(p.conta_custo_id,'Despesa')}</select></div>
-    <div class="hint full">As contas definem onde a receita e o custo deste produto entram no Fluxo Gerencial ao lançar o cenário. Podem ficar em branco (aí o item não é lançado no fluxo).</div>
-  </div>`, async()=>{ const payload={nome:$('#sp_nome').value.trim(),tipo:$('#sp_tipo').value,moeda:$('#sp_moeda').value,valor_venda:parseNum($('#sp_valor').value),custo_unit:parseNum($('#sp_custo').value),qtd_padrao:parseNum($('#sp_qtd').value),unidade:$('#sp_un').value.trim()||null,conta_receita_id:(+$('#sp_cr').value||null),conta_custo_id:(+$('#sp_cc').value||null)};
+    <div class="fld"><label>Conta de TRIBUTO (fluxo)</label><select id="sp_ct">${contaOptsNat(p.conta_tributo_id,'Despesa')}</select></div>
+    <div class="hint full">As contas definem onde a receita, o custo e o tributo deste produto entram no Fluxo Gerencial ao lançar. A <b>alíquota</b> incide sobre a receita do produto. Contas em branco não são lançadas no fluxo.</div>
+  </div>`, async()=>{ const payload={nome:$('#sp_nome').value.trim(),tipo:$('#sp_tipo').value,moeda:$('#sp_moeda').value,valor_venda:parseNum($('#sp_valor').value),custo_unit:parseNum($('#sp_custo').value),qtd_padrao:parseNum($('#sp_qtd').value),unidade:$('#sp_un').value.trim()||null,aliquota:parseNum($('#sp_aliq').value),conta_receita_id:(+$('#sp_cr').value||null),conta_custo_id:(+$('#sp_cc').value||null),conta_tributo_id:(+$('#sp_ct').value||null)};
     if(!payload.nome){toast('Informe o nome');return false;} let e2;
     if(p.id)({error:e2}=await SB.from('fcah_sim_produto').update(payload).eq('id',p.id)); else ({error:e2}=await SB.from('fcah_sim_produto').insert(withEmp(payload)));
     if(e2){toast('Erro: '+e2.message);return false;} SIM._cen=null;await loadSim();renderSim();toast('Salvo ✓');return true; });
@@ -706,10 +696,9 @@ async function simAplicarCenario(id){
   const c=(SIM._cenarios||[]).find(x=>x.id===id); if(!c||!c.dados){toast('Cenário inválido');return;}
   const d=c.dados; const full=(d.produtos||d.tributos||d.despesas);
   if(full){
-    if(!confirm('Carregar "'+c.nome+'" vai SUBSTITUIR os produtos, tributos e despesas atuais pelos deste cenário (o estado atual não salvo será perdido). Continuar?')) return;
+    if(!confirm('Carregar "'+c.nome+'" vai SUBSTITUIR os produtos e despesas atuais pelos desta venda (o estado atual não salvo será perdido). Continuar?')) return;
     try{
-      await simRestoreTable('fcah_sim_produto', d.produtos||[], ['nome','tipo','moeda','valor_venda','custo_unit','qtd_padrao','unidade','ativo','conta_receita_id','conta_custo_id']);
-      await simRestoreTable('fcah_sim_tributo', d.tributos||[], ['nome','aliquota','tipo','ativo','conta_id']);
+      await simRestoreTable('fcah_sim_produto', d.produtos||[], ['nome','tipo','moeda','valor_venda','custo_unit','qtd_padrao','unidade','ativo','aliquota','conta_receita_id','conta_custo_id','conta_tributo_id']);
       await simRestoreTable('fcah_sim_despesa', d.despesas||[], ['nome','modo','valor','tipo','ativo','conta_id']);
     }catch(e){toast('Erro ao restaurar: '+e.message); await loadSim(); renderSim(); return;}
     if(d.cambio) $('#simCambio').value=d.cambio;
@@ -727,16 +716,15 @@ async function simAplicarCenario(id){
 // Extrai os itens detalhados de um snapshot de cenário {cambio,produtos,tributos,despesas}.
 function simDetalhado(d){ d=d||{};
   const cambio=parseNum(d.cambio)||1; const conv=(v,moeda)=>parseNum(v)*(moeda==='USD'?cambio:1);
-  const prods=d.produtos||[], tribs=d.tributos||[], desps=d.despesas||[];
+  const prods=d.produtos||[], desps=d.despesas||[];
   let recV=0,recS=0; prods.forEach(p=>{ const r=parseNum(p.qtd_padrao)*conv(p.valor_venda,p.moeda); if(p.tipo==='Serviço')recS+=r; else recV+=r; });
   const baseTipo=t=> t==='Ambos'?(recV+recS):(t==='Serviço'?recS:recV);
   const items=[], semConta=[];
   const push=o=>{ if(!(o.valor>0))return; if(o.conta_id==null){ if(!semConta.includes(o.nome))semConta.push(o.nome); return; } items.push(o); };
-  prods.forEach(p=>{ const rec=parseNum(p.qtd_padrao)*conv(p.valor_venda,p.moeda); const cst=parseNum(p.qtd_padrao)*conv(p.custo_unit,p.moeda);
+  prods.forEach(p=>{ const rec=parseNum(p.qtd_padrao)*conv(p.valor_venda,p.moeda); const cst=parseNum(p.qtd_padrao)*conv(p.custo_unit,p.moeda); const trib=rec*parseNum(p.aliquota||0)/100;
     push({tipo:'Receita',valor:rec,conta_id:p.conta_receita_id,nome:(p.nome||'produto')+' (receita)',desc:'Receita — '+(p.nome||'produto')});
-    push({tipo:'Despesa',valor:cst,conta_id:p.conta_custo_id,nome:(p.nome||'produto')+' (custo)',desc:'Custo — '+(p.nome||'produto')}); });
-  tribs.forEach(t=>{ const val=baseTipo(t.tipo)*parseNum(t.aliquota)/100;
-    push({tipo:'Despesa',valor:val,conta_id:t.conta_id,nome:(t.nome||'tributo'),desc:'Tributo — '+(t.nome||'tributo')}); });
+    push({tipo:'Despesa',valor:cst,conta_id:p.conta_custo_id,nome:(p.nome||'produto')+' (custo)',desc:'Custo — '+(p.nome||'produto')});
+    push({tipo:'Despesa',valor:trib,conta_id:p.conta_tributo_id,nome:(p.nome||'produto')+' (tributo)',desc:'Tributo — '+(p.nome||'produto')}); });
   desps.forEach(x=>{ const val=x.modo==='Percentual'?baseTipo(x.tipo)*parseNum(x.valor)/100:parseNum(x.valor);
     push({tipo:'Despesa',valor:val,conta_id:x.conta_id,nome:(x.nome||'despesa'),desc:'Despesa — '+(x.nome||'despesa')}); });
   return {items,semConta};
@@ -2149,13 +2137,11 @@ function renderGestao(){renderLanc();renderCaixaGer();renderCad();}
 function wireSim(){
   $('#simCambio')&&$('#simCambio').addEventListener('input',()=>{SIM._cen=null;renderSim();});
   $('#simNovoProd')&&($('#simNovoProd').onclick=()=>simFormProd());
-  $('#simNovoTrib')&&($('#simNovoTrib').onclick=()=>simFormTrib());
   $('#simNovaDesp')&&($('#simNovaDesp').onclick=()=>simFormDesp());
   $('#simSalvar')&&($('#simSalvar').onclick=simSalvarCenario);
   $('#simCarregar')&&($('#simCarregar').onclick=simCarregarCenario);
-  ['simProdTbl','simTribTbl','simDespTbl'].forEach(id=>{const el=$('#'+id);if(el)el.addEventListener('click',simTblClick);});
-  const pt=$('#simProdTbl'); if(pt) pt.addEventListener('change',e=>{const inp=e.target.closest('.simqtd');if(inp)simSaveQtd(+inp.dataset.id,inp.value);});
-  const tt=$('#simTribTbl'); if(tt) tt.addEventListener('change',e=>{const inp=e.target.closest('.simaliq');if(inp)simSaveAliq(+inp.dataset.id,inp.value);});
+  ['simProdTbl','simDespTbl'].forEach(id=>{const el=$('#'+id);if(el)el.addEventListener('click',simTblClick);});
+  const pt=$('#simProdTbl'); if(pt) pt.addEventListener('change',e=>{const q=e.target.closest('.simqtd');if(q){simSaveQtd(+q.dataset.id,q.value);return;} const a=e.target.closest('.simaliq');if(a)simSaveAliq(+a.dataset.id,a.value);});
 }
 
 /* ---- render all ---- */
