@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08w)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08x)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -212,7 +212,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08w · editar venda</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08x · entregas</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -325,10 +325,10 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
 <section class="view" id="v-caixager">
   <div class="panel">
     <div class="toolbar">
-      <div class="fld"><label>Início (12 meses a partir de)</label><div style="display:flex;gap:4px;align-items:center"><button class="iconbtn" id="cgPrev" title="Mês anterior" type="button">‹</button><select id="cgMes" style="min-width:66px"><option value="0">jan</option><option value="1">fev</option><option value="2">mar</option><option value="3">abr</option><option value="4">mai</option><option value="5">jun</option><option value="6">jul</option><option value="7">ago</option><option value="8">set</option><option value="9">out</option><option value="10">nov</option><option value="11">dez</option></select><select id="cgAno" style="min-width:78px"></select><button class="iconbtn" id="cgNext" title="Próximo mês" type="button">›</button></div></div>
       <div class="fld"><label>Agrupar por</label><select id="cgModo"><option value="conta">Conta (dentro do grupo)</option><option value="grupo">Somente grupo</option></select></div>
       <div class="fld"><label>Visão</label><select id="cgTipo"><option value="saldo">Saldo (Receitas − Despesas)</option><option value="Receita">Só Receitas</option><option value="Despesa">Só Despesas</option></select></div>
       <div class="grow"></div>
+      <div class="fld"><label>Início (12 meses a partir de)</label><div style="display:flex;gap:4px;align-items:center"><button class="iconbtn" id="cgPrev" title="Mês anterior" type="button">‹</button><select id="cgMes" style="min-width:66px"><option value="0">jan</option><option value="1">fev</option><option value="2">mar</option><option value="3">abr</option><option value="4">mai</option><option value="5">jun</option><option value="6">jul</option><option value="7">ago</option><option value="8">set</option><option value="9">out</option><option value="10">nov</option><option value="11">dez</option></select><select id="cgAno" style="min-width:78px"></select><button class="iconbtn" id="cgNext" title="Próximo mês" type="button">›</button></div></div>
       <button class="btn ghost" id="cgExport">⭳ Exportar CSV</button>
     </div>
     <div class="kpis" id="cgKpis"></div>
@@ -741,9 +741,10 @@ async function simGerarLancsFromCenario(cen,cfg,silent){
   const {items,semConta}=simDetalhado(cen.dados||{});
   if(!items.length){ if(!silent)toast('Nenhum item com conta associada para lançar. Associe contas de receita/despesa aos itens.'); return false; }
   const lote=cen.lote||uuid(); const rows=[];
-  for(let i=0;i<cfg.N;i++){ const idx=cfg.sm+i; const ty=cfg.sy+Math.floor(idx/12); const tm=((idx%12)+12)%12; const dp=simDataAlvo(ty,tm,cfg.dia);
+  const nEnt=Math.max(1,cfg.N||1); // qtde de entregas/pagamentos — o valor de cada item é dividido por este número
+  for(let i=0;i<nEnt;i++){ const idx=cfg.sm+i; const ty=cfg.sy+Math.floor(idx/12); const tm=((idx%12)+12)%12; const dp=simDataAlvo(ty,tm,cfg.dia);
     items.forEach(it=>{ const conta=G.contas.find(c=>c.id===it.conta_id); const gid=conta?conta.grupo_id:null;
-      rows.push({tipo:it.tipo,valor:Math.abs(it.valor),grupo_id:gid,conta_id:it.conta_id,meio_id:null,data_compra:dp,data_pagamento:dp,descricao:it.desc+' · Venda: '+cen.nome,parcela_num:1,parcela_total:1,lote,fonte:'Venda: '+cen.nome,origem:'venda_sim',simulado:true}); }); }
+      rows.push({tipo:it.tipo,valor:Math.abs(it.valor/nEnt),grupo_id:gid,conta_id:it.conta_id,meio_id:null,data_compra:dp,data_pagamento:dp,descricao:it.desc+(nEnt>1?(' ('+(i+1)+'/'+nEnt+')'):'')+' · Venda: '+cen.nome,parcela_num:i+1,parcela_total:nEnt,lote,fonte:'Venda: '+cen.nome,origem:'venda_sim',simulado:true}); }); }
   const _e=authEmp();
   // se já estava lançado, remove os antigos deste lote antes de reinserir (substituição)
   if(cen.lote){ let dq=SB.from('fcah_lancamento_tx').delete().eq('lote',cen.lote).eq('origem','venda_sim'); if(_e!=null)dq=dq.eq('empresa_id',_e); const {error:de}=await dq; if(de){toast('Erro ao limpar lançamentos anteriores: '+de.message);return false;} }
@@ -760,12 +761,14 @@ function simLancarDialog(id){ const cen=(SIM._cenarios||[]).find(x=>x.id===id); 
   const jaLanc=!!cen.lote;
   const avisos = semConta.length? `<div class="hint full" style="color:var(--amber)">⚠ ${semConta.length} item(ns) sem conta associada serão ignorados: ${esc(semConta.slice(0,6).join(', '))}${semConta.length>6?'…':''}. Associe contas no cadastro dos itens para incluí-los.</div>`:'';
   const nItens=items.length;
+  const nEnt=cfg.N||1;
   openModal((jaLanc?'Atualizar':'Lançar')+' no Fluxo — '+esc(cen.nome), `<div class="form-grid">
+    <div class="full" style="font-weight:650;color:var(--txt2);font-size:11px;text-transform:uppercase;letter-spacing:.3px">Mês inicial de pagamento</div>
     <div class="fld"><label>Mês inicial</label><select id="flcM">${mo.m}</select></div>
     <div class="fld"><label>Ano inicial</label><select id="flcY">${mo.y}</select></div>
-    <div class="fld"><label>Nº de meses</label><input type="number" id="flcN" value="${cfg.N||12}" min="1" max="60"></div>
+    <div class="fld"><label>Qtde de entregas / pagamentos</label><input type="number" id="flcN" value="${nEnt}" min="1" max="60"></div>
     <div class="fld"><label>Dia do mês</label><input type="number" id="flcD" value="${cfg.dia||1}" min="1" max="28"></div>
-    <div class="hint full">Serão lançados <b>${nItens}</b> item(ns)/mês (receitas + custos + tributos + despesas), cada um na sua conta, marcados como <b>🧪 SIM</b> e identificados por <b>“Venda: ${esc(cen.nome)}”</b>.${jaLanc?' <b>Este cenário já está no fluxo</b> — os lançamentos anteriores serão substituídos.':''}</div>
+    <div class="hint full">O valor de cada receita/despesa é <b>dividido pela quantidade de entregas/pagamentos</b> e lançado 1 por mês (padrão 1 = valor cheio em um mês). Serão gerados <b>${nItens}</b> item(ns) × entregas, cada um na sua conta, marcados como <b>🧪 SIM</b> e identificados por <b>“Venda: ${esc(cen.nome)}”</b>.${jaLanc?' <b>Esta venda já está no fluxo</b> — os lançamentos anteriores serão substituídos.':''}</div>
     ${avisos}
   </div>`, async()=>{ const N=Math.max(1,Math.min(60,parseInt($('#flcN').value)||1)); const dia=Math.max(1,Math.min(28,parseInt($('#flcD').value)||1));
     const cfg2={sy:+$('#flcY').value, sm:+$('#flcM').value, N, dia};
