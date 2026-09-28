@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08x)</title>
+<title>FCAH — Controle Financeiro (v2026-09-08y)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -94,7 +94,8 @@ tr.tot td{font-weight:750;border-top:2px solid var(--line2)}
 .pill.active{border-color:var(--accent);color:var(--accent2)}
 .flex2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .flex3{display:grid;grid-template-columns:380px 1fr;gap:16px;align-items:start}
-@media(max-width:900px){.flex3{grid-template-columns:1fr}.flex2{grid-template-columns:1fr}}
+.simrow{display:grid;grid-template-columns:1.7fr 1fr;gap:14px;align-items:start}
+@media(max-width:900px){.flex3{grid-template-columns:1fr}.flex2{grid-template-columns:1fr}.simrow{grid-template-columns:1fr}}
 .chartbox{width:100%;overflow-x:auto}
 svg text{font-family:inherit}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line2);padding:10px 18px;border-radius:10px;box-shadow:var(--shadow);font-size:13px;opacity:0;pointer-events:none;transition:.3s;z-index:50}
@@ -212,7 +213,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08x · entregas</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08y · converter venda</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -257,7 +258,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
 <section class="view" id="v-sim">
   <div class="panel" style="margin-bottom:14px">
     <div class="toolbar" style="margin-bottom:0;align-items:flex-end;flex-wrap:wrap;gap:10px">
-      <h3 style="margin:0 6px 0 0;align-self:center">🎯 Meta da simulação</h3>
+      <h3 style="margin:0 6px 0 0;align-self:center">🎯 Simulação de Vendas</h3>
       <div class="fld"><label>Câmbio USD→BRL</label><input type="number" id="simCambio" value="5.15" step="0.01" style="width:100px"></div>
       <input type="text" id="simCenNome" placeholder="nome do cenário…" style="flex:1;min-width:180px">
       <button class="btn sec" id="simSalvar">💾 Salvar Venda</button>
@@ -265,23 +266,22 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
       <span class="hint" id="simCenAtual" style="width:100%;margin-top:2px;font-size:12.5px">Cenário: <b>(não salvo)</b></span>
     </div>
   </div>
-  <div class="flex2">
+  <div class="simrow">
     <div class="panel">
       <div class="toolbar" style="margin-bottom:8px"><h3 style="margin:0">1. Produtos e serviços vendidos / mês</h3><div class="grow"></div><button class="btn" id="simNovoProd">＋ Produto/Serviço</button></div>
       <p class="desc">Edite a <b>quantidade/mês</b> direto na tabela. Valores em USD são convertidos pelo câmbio.</p>
       <div class="tblwrap"><table id="simProdTbl"></table></div>
     </div>
-    <div>
-      <div class="panel" style="margin-bottom:14px">
-        <div class="toolbar" style="margin-bottom:8px"><h3 style="margin:0">2. Tributos sobre a venda</h3><div class="grow"></div><button class="btn sec" id="simNovoTrib">＋ Tributo</button></div>
-        <div class="tblwrap"><table id="simTribTbl"></table></div>
-      </div>
-      <div class="panel">
-        <div class="toolbar" style="margin-bottom:8px"><h3 style="margin:0">3. Despesas</h3><div class="grow"></div><button class="btn sec" id="simNovaDesp">＋ Despesa</button></div>
-        <p class="desc">% incide sobre o faturamento; "Fixa" é valor em R$/mês independente da venda.</p>
-        <div class="tblwrap"><table id="simDespTbl"></table></div>
-      </div>
+    <div class="panel">
+      <div class="toolbar" style="margin-bottom:8px"><h3 style="margin:0">2. Tributos sobre a venda</h3><div class="grow"></div><button class="btn sec" id="simNovoTrib">＋ Tributo</button></div>
+      <p class="desc">Edite a <b>alíquota %</b> direto na tabela.</p>
+      <div class="tblwrap"><table id="simTribTbl"></table></div>
     </div>
+  </div>
+  <div class="panel" style="margin-top:14px">
+    <div class="toolbar" style="margin-bottom:8px"><h3 style="margin:0">3. Despesas</h3><div class="grow"></div><button class="btn sec" id="simNovaDesp">＋ Despesa</button></div>
+    <p class="desc">% incide sobre o faturamento; "Fixa" é valor em R$/mês independente da venda.</p>
+    <div class="tblwrap"><table id="simDespTbl"></table></div>
   </div>
   <div class="panel" style="margin-top:14px">
     <h3>4. Resultado (Receitas − Tributos − Custos − Despesas)</h3>
@@ -565,7 +565,7 @@ function renderSim(){
   // (KPIs do topo removidos — as mesmas informações estão na tabela “4. Resultado”.)
   // 1. Produtos
   const ctaTag=id=> id? esc(ctaNome(id)) : '<span style="color:var(--amber)" title="Associe uma conta para lançar no fluxo">⚠ sem conta</span>';
-  let h='<thead><tr><th>Produto/Serviço</th><th>Tipo</th><th>Moeda</th><th>Vlr unit</th><th>Custo unit</th><th>Qtd/mês</th><th>Receita (R$)</th><th>Custo (R$)</th><th>Conta (fluxo)</th><th></th></tr></thead><tbody>';
+  let h='<thead><tr><th style="min-width:190px">Produto/Serviço</th><th>Tipo</th><th>Moeda</th><th>Vlr unit</th><th>Custo unit</th><th>Qtd/mês</th><th>Receita (R$)</th><th>Custo (R$)</th><th style="min-width:150px">Conta (fluxo)</th><th></th></tr></thead><tbody>';
   if(!SIM.produtos.length) h+='<tr><td colspan="10"><div class="empty">Nenhum produto. Clique em “＋ Produto/Serviço”.</div></td></tr>';
   SIM.produtos.forEach(p=>{ const rec=parseNum(p.qtd_padrao)*p.valor_venda*(p.moeda==='USD'?c.cambio:1); const cu=parseNum(p.qtd_padrao)*p.custo_unit*(p.moeda==='USD'?c.cambio:1);
     h+=`<tr><td>${esc(p.nome)}</td><td><span class="badge ${p.tipo==='Serviço'?'rec':'desp'}">${esc(p.tipo)}</span></td><td>${p.moeda}</td><td>${fmt2.format(p.valor_venda)}</td><td>${fmt2.format(p.custo_unit)}</td>`+
@@ -574,15 +574,17 @@ function renderSim(){
       `<td class="acts"><button class="actbtn" data-sact="prod-edit" data-id="${p.id}">✎</button> <button class="actbtn del" data-sact="prod-del" data-id="${p.id}">✕</button></td></tr>`; });
   h+='</tbody>';$('#simProdTbl').innerHTML=h;
   // 2. Tributos
-  h='<thead><tr><th>Tributo</th><th>Alíquota %</th><th>Incide em</th><th>Conta (fluxo)</th><th></th></tr></thead><tbody>';
+  h='<thead><tr><th style="min-width:150px">Tributo</th><th>Alíquota %</th><th>Incide em</th><th style="min-width:130px">Conta (fluxo)</th><th></th></tr></thead><tbody>';
   if(!SIM.tributos.length) h+='<tr><td colspan="5"><div class="empty">Nenhum tributo.</div></td></tr>';
-  SIM.tributos.forEach(t=>{ h+=`<tr><td>${esc(t.nome)}</td><td>${fmt2.format(t.aliquota)}%</td><td>${esc(t.tipo)}</td><td class="small">${ctaTag(t.conta_id)}</td><td class="acts"><button class="actbtn" data-sact="trib-edit" data-id="${t.id}">✎</button> <button class="actbtn del" data-sact="trib-del" data-id="${t.id}">✕</button></td></tr>`; });
+  SIM.tributos.forEach(t=>{ h+=`<tr><td>${esc(t.nome)}</td><td><input type="number" class="simaliq" data-id="${t.id}" value="${t.aliquota}" step="0.01" style="width:80px"> %</td><td>${esc(t.tipo)}</td><td class="small">${ctaTag(t.conta_id)}</td><td class="acts"><button class="actbtn" data-sact="trib-edit" data-id="${t.id}">✎</button> <button class="actbtn del" data-sact="trib-del" data-id="${t.id}">✕</button></td></tr>`; });
   h+='</tbody>';$('#simTribTbl').innerHTML=h;
   // 3. Despesas
-  h='<thead><tr><th>Despesa</th><th>Modo</th><th>Valor</th><th>Tipo</th><th>Conta (fluxo)</th><th></th></tr></thead><tbody>';
-  if(!SIM.despesas.length) h+='<tr><td colspan="6"><div class="empty">Nenhuma despesa.</div></td></tr>';
+  const recV=c.per.Venda.rec, recS=c.per['Serviço'].rec;
+  const despValor=d=>{ if(d.tipo==='Fixa')return parseNum(d.valor); const base=d.tipo==='Ambos'?(recV+recS):(d.tipo==='Serviço'?recS:recV); return d.modo==='Percentual'? base*parseNum(d.valor)/100 : parseNum(d.valor); };
+  h='<thead><tr><th style="min-width:160px">Despesa</th><th>Modo</th><th>Valor / %</th><th>Valor (R$)</th><th>Tipo</th><th style="min-width:150px">Conta (fluxo)</th><th></th></tr></thead><tbody>';
+  if(!SIM.despesas.length) h+='<tr><td colspan="7"><div class="empty">Nenhuma despesa.</div></td></tr>';
   SIM.despesas.forEach(d=>{ const v=d.modo==='Percentual'?fmt2.format(d.valor)+'%':'R$ '+fmt.format(d.valor);
-    h+=`<tr><td>${esc(d.nome)}</td><td>${esc(d.modo)}</td><td>${v}</td><td>${esc(d.tipo)}</td><td class="small">${ctaTag(d.conta_id)}</td><td class="acts"><button class="actbtn" data-sact="desp-edit" data-id="${d.id}">✎</button> <button class="actbtn del" data-sact="desp-del" data-id="${d.id}">✕</button></td></tr>`; });
+    h+=`<tr><td>${esc(d.nome)}</td><td>${esc(d.modo)}</td><td>${v}</td><td class="money neg">${fmt.format(despValor(d))}</td><td>${esc(d.tipo)}</td><td class="small">${ctaTag(d.conta_id)}</td><td class="acts"><button class="actbtn" data-sact="desp-edit" data-id="${d.id}">✎</button> <button class="actbtn del" data-sact="desp-del" data-id="${d.id}">✕</button></td></tr>`; });
   h+='</tbody>';$('#simDespTbl').innerHTML=h;
   // 4. Resultado
   h='<thead><tr><th>Linha</th><th>Receitas</th><th>Tributos</th><th>Custos</th><th>Despesas</th><th>Resultado</th><th>Margem %</th></tr></thead><tbody>';
@@ -601,13 +603,14 @@ function renderSim(){
   $('#simMetaHint').innerHTML=mh;
   const editing=SIM._cenId!=null;
   const cl=$('#simCenAtual'); if(cl) cl.innerHTML = editing
-    ? '✏️ Editando venda: <b>'+esc(SIM._cenNome||'')+'</b> — as alterações vão para esta venda ao clicar em Atualizar. <a href="#" id="simNovoCen">iniciar nova</a>'
-    : 'Cenário: <b>'+(SIM._cen?esc(SIM._cen):'(não salvo)')+'</b>';
-  const sbtn=$('#simSalvar'); if(sbtn) sbtn.textContent = editing ? '💾 Atualizar venda' : '💾 Salvar Venda';
+    ? '✏️ Editando venda: <span class="badge" style="background:var(--accent);color:#fff;font-size:13px;padding:3px 11px;letter-spacing:.3px">'+esc(SIM._cenNome||'')+'</span> — as alterações vão para esta venda ao clicar em <b>Atualizar venda</b>. <a href="#" id="simNovoCen">iniciar nova</a>'
+    : 'Venda: <b>(não salva)</b>';
+  const sbtn=$('#simSalvar'); if(sbtn){ sbtn.textContent = editing ? '💾 Atualizar venda' : '💾 Salvar Venda'; sbtn.className = editing ? 'btn' : 'btn sec'; if(editing){sbtn.style.boxShadow='0 0 0 2px var(--accent)';sbtn.style.fontWeight='750';}else{sbtn.style.boxShadow='';sbtn.style.fontWeight='';} }
   const nv=$('#simNovoCen'); if(nv) nv.onclick=e=>{ e.preventDefault(); SIM._cenId=null;SIM._cenNome=null;SIM._cenObj=null; const inp=$('#simCenNome'); if(inp)inp.value=''; renderSim(); };
 }
 /* --- edição de quantidade e ações --- */
 async function simSaveQtd(id,val){ const {error}=await SB.from('fcah_sim_produto').update({qtd_padrao:parseNum(val)}).eq('id',id); if(error){toast('Erro: '+error.message);return;} const p=SIM.produtos.find(x=>x.id===id); if(p)p.qtd_padrao=parseNum(val); SIM._cen=null; renderSim(); }
+async function simSaveAliq(id,val){ const {error}=await SB.from('fcah_sim_tributo').update({aliquota:parseNum(val)}).eq('id',id); if(error){toast('Erro: '+error.message);return;} const t=SIM.tributos.find(x=>x.id===id); if(t)t.aliquota=parseNum(val); SIM._cen=null; renderSim(); }
 function simTblClick(e){ const b=e.target.closest('button[data-sact]'); if(!b)return; const id=+b.dataset.id,a=b.dataset.sact;
   if(a==='prod-edit')simFormProd(SIM.produtos.find(x=>x.id===id));
   else if(a==='prod-del')simDel('fcah_sim_produto',id,'produtos');
@@ -683,13 +686,15 @@ async function simCarregarCenario(){
   if(!lista.length) body='<div class="empty">Nenhum cenário salvo ainda. Ajuste as quantidades/câmbio e clique em “💾 Salvar cenário”.</div>';
   else{ body='<div class="small muted" style="margin-bottom:8px">Clique no nome (ou em <b>✎ Editar</b>) para carregar a venda na tela, altere os valores e clique em <b>💾 Atualizar venda</b>. Use <b>▶ Fluxo</b> para lançar/atualizar no Fluxo Gerencial.</div><div class="tblwrap"><table id="simCenTbl"><thead><tr><th>Venda</th><th>Salvo em</th><th>Faturamento</th><th>Margem</th><th>No fluxo</th><th></th></tr></thead><tbody>';
     lista.forEach(c=>{ const r=c.resultado||{}; const fx=c.lote?'<span class="badge rec" title="Esta venda está lançada no Fluxo Gerencial">no fluxo</span>':'<span class="muted">—</span>';
-      body+=`<tr style="cursor:default"><td data-load="${c.id}" style="cursor:pointer"><b>${esc(c.nome)}</b></td><td class="muted">${fmtData(c.criado_em)} ${String(c.criado_em).slice(11,16)}</td><td class="money">R$ ${fmt.format(r.recTot||0)}</td><td>${r.margTot!=null?pct.format(r.margTot):'—'}</td><td>${fx}</td><td class="acts" style="white-space:nowrap"><button class="actbtn" style="width:auto;padding:0 10px" data-fluxocen="${c.id}" title="Lançar/atualizar as receitas e despesas desta venda no Fluxo Gerencial">▶ Fluxo</button> <button class="actbtn" style="width:auto;padding:0 10px" data-editcen="${c.id}" title="Carregar esta venda na tela para editar os valores">✎ Editar</button> <button class="actbtn del" style="width:auto;padding:0 10px;color:var(--red);border-color:var(--red)" data-delcen="${c.id}" title="Excluir a venda (e seus lançamentos no fluxo)">✕ Excluir</button></td></tr>`; });
+      const btnConv=c.lote?` <button class="actbtn" style="width:auto;padding:0 10px;color:var(--green);border-color:var(--green)" data-convcen="${c.id}" title="Tornar os lançamentos desta venda REAIS e definitivos no fluxo (remove a marca SIM; não pode ser desfeito pela simulação)">✅ Converter</button>`:'';
+      body+=`<tr style="cursor:default"><td data-load="${c.id}" style="cursor:pointer"><b>${esc(c.nome)}</b></td><td class="muted">${fmtData(c.criado_em)} ${String(c.criado_em).slice(11,16)}</td><td class="money">R$ ${fmt.format(r.recTot||0)}</td><td>${r.margTot!=null?pct.format(r.margTot):'—'}</td><td>${fx}</td><td class="acts" style="white-space:nowrap"><button class="actbtn" style="width:auto;padding:0 10px" data-fluxocen="${c.id}" title="Lançar/atualizar as receitas e despesas desta venda no Fluxo Gerencial">▶ Fluxo</button> <button class="actbtn" style="width:auto;padding:0 10px" data-editcen="${c.id}" title="Carregar esta venda na tela para editar os valores">✎ Editar</button>${btnConv} <button class="actbtn del" style="width:auto;padding:0 10px;color:var(--red);border-color:var(--red)" data-delcen="${c.id}" title="Excluir a venda (e seus lançamentos no fluxo)">✕ Excluir</button></td></tr>`; });
     body+='</tbody></table></div>'; }
   openModal('📂 Vendas salvas',body,null); $('#modalCancel').textContent='Fechar';
   { const mw=document.querySelector('#modal .modal'); if(mw){mw.classList.add('wide'); mw.style.maxWidth='min(1220px,95vw)';} }
   const tb=$('#simCenTbl');
   if(tb) tb.addEventListener('click',e=>{ const fx=e.target.closest('button[data-fluxocen]'); if(fx){e.stopPropagation();simLancarDialog(+fx.dataset.fluxocen);return;}
     const ed=e.target.closest('button[data-editcen]'); if(ed){e.stopPropagation();simAplicarCenario(+ed.dataset.editcen);return;}
+    const cv=e.target.closest('button[data-convcen]'); if(cv){e.stopPropagation();simConverterVenda(+cv.dataset.convcen);return;}
     const del=e.target.closest('button[data-delcen]'); if(del){e.stopPropagation();simExcluirCenario(+del.dataset.delcen);return;}
     const cell=e.target.closest('td[data-load]'); if(cell)simAplicarCenario(+cell.dataset.load); });
 }
@@ -773,6 +778,18 @@ function simLancarDialog(id){ const cen=(SIM._cenarios||[]).find(x=>x.id===id); 
   </div>`, async()=>{ const N=Math.max(1,Math.min(60,parseInt($('#flcN').value)||1)); const dia=Math.max(1,Math.min(28,parseInt($('#flcD').value)||1));
     const cfg2={sy:+$('#flcY').value, sm:+$('#flcM').value, N, dia};
     const ok=await simGerarLancsFromCenario(cen,cfg2,false); if(!ok)return false; setTimeout(simCarregarCenario,0); return true; });
+}
+// CONVERTER VENDA: torna os lançamentos simulados desta venda em REAIS e definitivos (tira a marca SIM e desvincula — não pode ser desfeito pela simulação).
+async function simConverterVenda(id){ const cen=(SIM._cenarios||[]).find(x=>x.id===id); if(!cen){toast('Venda inválida');return;}
+  if(!cen.lote){ toast('Esta venda ainda não foi lançada no fluxo (use ▶ Fluxo primeiro).'); return; }
+  if(!confirm('Converter a venda "'+cen.nome+'"?\n\nOs lançamentos desta venda no Fluxo passam a ser REAIS e definitivos: perdem a marca 🧪 SIM e deixam de ser vinculados à simulação. Esta ação NÃO pode ser desfeita pela simulação (a venda não poderá mais atualizá-los nem removê-los).')) return;
+  const _e=authEmp();
+  let uq=SB.from('fcah_lancamento_tx').update({simulado:false,origem:'venda',lote:null}).eq('lote',cen.lote).eq('origem','venda_sim'); if(_e!=null)uq=uq.eq('empresa_id',_e);
+  const {error}=await uq; if(error){toast('Erro ao converter: '+error.message);return;}
+  const {error:ue}=await SB.from('fcah_sim_cenario').update({lote:null,fluxo_cfg:null}).eq('id',id); if(ue){toast('Convertido, mas não limpei o vínculo: '+ue.message);}
+  cen.lote=null; cen.fluxo_cfg=null; if(SIM._cenObj&&SIM._cenObj.id===id){SIM._cenObj.lote=null;SIM._cenObj.fluxo_cfg=null;}
+  await loadLanc(); renderLanc(); renderCaixaGer();
+  toast('Venda convertida — lançamentos agora são reais ✓'); simCarregarCenario();
 }
 // Sobrescreve o cenário salvo com os itens atuais da tela; se lançado, atualiza o fluxo.
 async function simExcluirCenario(id){ const cen=(SIM._cenarios||[]).find(x=>x.id===id); const temFluxo=cen&&cen.lote;
@@ -2138,6 +2155,7 @@ function wireSim(){
   $('#simCarregar')&&($('#simCarregar').onclick=simCarregarCenario);
   ['simProdTbl','simTribTbl','simDespTbl'].forEach(id=>{const el=$('#'+id);if(el)el.addEventListener('click',simTblClick);});
   const pt=$('#simProdTbl'); if(pt) pt.addEventListener('change',e=>{const inp=e.target.closest('.simqtd');if(inp)simSaveQtd(+inp.dataset.id,inp.value);});
+  const tt=$('#simTribTbl'); if(tt) tt.addEventListener('change',e=>{const inp=e.target.closest('.simaliq');if(inp)simSaveAliq(+inp.dataset.id,inp.value);});
 }
 
 /* ---- render all ---- */
