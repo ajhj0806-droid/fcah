@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-09b)</title>
+<title>FCAH — Controle Financeiro (v2026-09-09c)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -213,12 +213,13 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-09b · convertida</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-09c · usuários</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
     <span id="userBadge" class="small" style="margin-left:12px" hidden></span>
     <select id="empSwitch" class="small" title="Empresa em visualização (somente superadmin)" hidden style="margin-left:8px;padding:3px 6px;border-radius:6px"></select>
+    <button class="btn ghost" id="btnTrocarSenha" hidden style="margin-left:8px;padding:4px 10px" title="Trocar a minha senha">🔑 Trocar senha</button>
     <button class="btn ghost" id="btnLogout" hidden style="margin-left:8px;padding:4px 10px">Sair</button>
     <button class="iconbtn" id="themebtn" title="Alternar tema">◑</button>
   </div>
@@ -1042,7 +1043,8 @@ function buildEmpSwitch(){ const sel=$('#empSwitch'); if(!sel)return;
     buildEmpSwitch(); toast('Empresa em visualização: '+empresaNome(VIEW_EMP)); };
 }
 function showUserBadge(p){ const b=$('#userBadge'); if(b){ b.hidden=false; b.innerHTML=esc(p.nome||p.email)+' · <b>'+esc(empresaNome(p.empresa_id))+'</b> <span class="tag proj">'+esc(ROLE_LABEL[p.tipo]||p.tipo||'—')+'</span>'; }
-  const lo=$('#btnLogout'); if(lo)lo.hidden=false; }
+  const lo=$('#btnLogout'); if(lo)lo.hidden=false;
+  const ts=$('#btnTrocarSenha'); if(ts)ts.hidden=false; }
 async function doLogin(){ const email=($('#agEmail').value||'').trim(), senha=$('#agSenha').value||'';
   if(!email||!senha){ agMsg('Informe e-mail e senha.'); return; } agMsg('Entrando…');
   let res; try{ res=await Promise.race([ SB.auth.signInWithPassword({email,password:senha}), new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),20000)) ]); }
@@ -1061,6 +1063,18 @@ async function doSignup(){ const nome=($('#agNome').value||'').trim(), email=($(
   if(data.session){ await afterLogin(data.session.user); }
   else { showAuthGate('login'); agMsg('Conta criada! Se pedir confirmação por e-mail, confirme e depois faça login.'); } }
 async function doLogout(){ try{ await SB.auth.signOut(); }catch(e){} location.reload(); }
+// Trocar a PRÓPRIA senha (usuário logado) — não precisa de e-mail/SMTP
+function abrirTrocarSenha(){ openModal('🔑 Trocar minha senha', `<div class="form-grid">
+    <div class="fld full"><label>Nova senha (mín. 6 caracteres)</label><input type="password" id="ts_s1" autocomplete="new-password"></div>
+    <div class="fld full"><label>Repita a nova senha</label><input type="password" id="ts_s2" autocomplete="new-password"></div>
+    <div class="hint full">Ao salvar, sua senha muda imediatamente. Use a nova senha nos próximos logins.</div>
+  </div>`, async()=>{ const s1=$('#ts_s1').value||'', s2=$('#ts_s2').value||'';
+    if(s1.length<6){ toast('A senha precisa de pelo menos 6 caracteres'); return false; }
+    if(s1!==s2){ toast('As senhas não conferem'); return false; }
+    const {error}=await SB.auth.updateUser({password:s1});
+    if(error){ toast('Erro: '+(error.message||'falha ao trocar senha')); return false; }
+    toast('Senha alterada ✓'); return true; });
+}
 let AUTH_WIRED=false;
 function wireAuth(){ if(AUTH_WIRED)return; AUTH_WIRED=true;
   $('#agEntrar')&&($('#agEntrar').onclick=doLogin);
@@ -1069,6 +1083,7 @@ function wireAuth(){ if(AUTH_WIRED)return; AUTH_WIRED=true;
   $('#agToLogin')&&($('#agToLogin').onclick=e=>{e.preventDefault();showAuthGate('login');});
   $('#agSair2')&&($('#agSair2').onclick=doLogout);
   $('#btnLogout')&&($('#btnLogout').onclick=doLogout);
+  $('#btnTrocarSenha')&&($('#btnTrocarSenha').onclick=abrirTrocarSenha);
   ['agSenha','agEmail'].forEach(id=>{const el=$('#'+id); if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});});
   ['agSenha2'].forEach(id=>{const el=$('#'+id); if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter')doSignup();});});
 }
@@ -1992,10 +2007,11 @@ function renderCad(){
   else if(CAD_SUB==='empresas'){ h='<thead><tr><th>Empresa</th><th>CNPJ</th><th>Ativo</th><th></th></tr></thead><tbody>'+
     data.slice().sort((a,b)=>String(a.nome).localeCompare(String(b.nome))).map(e=>`<tr><td><b>${esc(e.nome)}</b></td><td>${esc(e.cnpj)||'—'}</td><td>${e.ativo?'Sim':'Não'}</td>${acts(e.id)}</tr>`).join(''); }
   else { h='<thead><tr><th>Nome</th><th>E-mail</th><th>Empresa</th><th>Tipo</th><th>Ativo</th><th></th></tr></thead><tbody>'+
-    data.slice().sort((a,b)=>((a.empresa_id?1:0)-(b.empresa_id?1:0))||String(a.nome).localeCompare(String(b.nome))).map(u=>{ const pend=!u.empresa_id||!u.ativo; return `<tr${pend?' style="background:rgba(245,158,11,.08)"':''}><td>${esc(u.nome)}${pend?' <span class="tag orc">pendente</span>':''}</td><td>${esc(u.email)||'—'}</td><td>${u.empresa_id?esc(empresaNome(u.empresa_id)):'<span class="muted">— sem empresa —</span>'}</td><td><span class="tag proj">${esc(u.tipo)}</span></td><td>${u.ativo?'Sim':'Não'}</td>${acts(u.id)}</tr>`; }).join(''); }
+    data.slice().sort((a,b)=>((a.empresa_id?1:0)-(b.empresa_id?1:0))||String(a.nome).localeCompare(String(b.nome))).map(u=>{ const pend=!u.empresa_id||!u.ativo; return `<tr${pend?' style="background:rgba(245,158,11,.08)"':''}><td>${esc(u.nome)}${pend?' <span class="tag orc">pendente</span>':''}</td><td>${esc(u.email)||'—'}</td><td>${u.empresa_id?esc(empresaNome(u.empresa_id)):'<span class="muted">— sem empresa —</span>'}</td><td><span class="tag proj">${esc(u.tipo)}</span></td><td>${u.ativo?'Sim':'Não'}</td>${actsUser(u.id)}</tr>`; }).join(''); }
   h+='</tbody>'; $('#cadTbl').innerHTML=data.length?h:'<tbody><tr><td><div class="empty">Nenhum registro. Clique em “＋ Novo”.</div></td></tr></tbody>';
 }
 function acts(id){return `<td class="acts"><button class="actbtn" data-act="edit" data-id="${id}" title="Editar">✎</button> <button class="actbtn del" data-act="del" data-id="${id}" title="Excluir">✕</button></td>`;}
+function actsUser(id){return `<td class="acts" style="white-space:nowrap"><button class="actbtn" data-act="resetpwd" data-id="${id}" title="Gerar nova senha (aleatória)">🔑</button> <button class="actbtn" data-act="edit" data-id="${id}" title="Editar">✎</button> <button class="actbtn del" data-act="del" data-id="${id}" title="Excluir usuário">✕</button></td>`;}
 function cadContasFiltradas(){ const f=CAD_CFILTRO; const q=(f.nome||'').toLowerCase();
   return (G.contas||[]).filter(c=>{ if(f.nat && ctaNat(c.id)!==f.nat)return false; if(f.grupo && String(c.grupo_id)!==f.grupo)return false; if(q && !String(c.nome||'').toLowerCase().includes(q))return false; return true; }); }
 function cadContasTableHtml(){ const natBadge=n=>`<span class="badge ${n==='Receita'?'rec':'desp'}">${n||'Despesa'}</span>`;
@@ -2028,7 +2044,8 @@ function cadTblClick(e){
   const ar=e.target.closest('[data-addrule]');if(ar){addRuleToConta(+ar.dataset.addrule);return;}
   const ed=e.target.closest('[data-editrule]');if(ed){startEditRule(ed);return;}
   const b=e.target.closest('button[data-act]');if(!b)return;const id=+b.dataset.id;const def=CAD_DEF[CAD_SUB];const item=(G[def.cache]||[]).find(x=>x.id===id);
-  if(b.dataset.act==='edit')abrirFormCad(item);else excluirCad(id);}
+  if(b.dataset.act==='resetpwd')resetarSenhaUsuario(id);
+  else if(b.dataset.act==='edit')abrirFormCad(item);else excluirCad(id);}
 async function deleteRegra(id){ const {error}=await SB.from('fcah_conta_regra').delete().eq('id',id); if(error){toast('Erro: '+error.message);return;} await loadGestao(); renderCad(); }
 function startEditRule(span){ const id=+span.dataset.editrule; const old=span.textContent.trim();
   span.innerHTML=`<input value="${esc(old)}" style="width:130px;font-size:11px;padding:2px 5px">`; const inp=span.querySelector('input'); inp.focus(); inp.select();
@@ -2106,7 +2123,28 @@ async function salvarNovoUsuario(){
   const bc=$('#modalCancel'); if(bc) bc.textContent='Fechar';
   return false;
 }
+// Excluir usuário (perfil + login) via RPC SECURITY DEFINER — admin/superadmin
+async function excluirUsuario(id){ const u=(G.usuarios||[]).find(x=>x.id===id);
+  if(!confirm('Excluir o usuário "'+(u?u.nome:'')+'"?\n\nO login e o acesso serão removidos permanentemente. Esta ação não pode ser desfeita.'))return;
+  const {error}=await SB.rpc('fcah_excluir_usuario',{p_id:id});
+  if(error){ toast('Erro: '+(error.message||'falha ao excluir')); return; }
+  await loadGestao(); renderCad(); toast('Usuário excluído ✓');
+}
+// Gerar nova senha aleatória para um usuário (admin/superadmin) e mostrar para repassar
+async function resetarSenhaUsuario(id){ const u=(G.usuarios||[]).find(x=>x.id===id);
+  if(!confirm('Gerar uma NOVA senha aleatória para "'+(u?u.nome:'')+'"?\n\nA senha atual deixa de funcionar. Anote a nova senha e repasse à pessoa.'))return;
+  const {data,error}=await SB.rpc('fcah_resetar_senha',{p_id:id});
+  if(error){ toast('Erro: '+(error.message||'falha ao gerar senha')); return; }
+  const senha=(data==null?'':String(data));
+  openModal('🔑 Nova senha gerada', `<div class="form-grid">
+    <div class="hint full" style="border-color:#16a34a"><b>✓ Senha redefinida.</b> Repasse à pessoa — a senha anterior não funciona mais.</div>
+    <div class="fld full"><label>Usuário</label><input type="text" readonly value="${esc((u?u.nome:'')+' · '+(u?u.email:''))}"></div>
+    <div class="fld full"><label>Nova senha</label><input type="text" readonly value="${esc(senha)}" onclick="this.select()" style="font-weight:700;font-size:15px"></div>
+  </div>`, null);
+  $('#modalCancel').textContent='Fechar';
+}
 async function excluirCad(id){
+  if(CAD_SUB==='usuarios') return excluirUsuario(id);
   const def=CAD_DEF[CAD_SUB]; if(!confirm('Excluir este registro?'))return;
   const {error}=await SB.from(def.table).delete().eq('id',id);
   if(error){ if(error.code==='23503'||/foreign key/i.test(error.message||'')){toast('Não é possível excluir: há registros vinculados (lançamentos ou contas). Remova-os primeiro.');} else toast('Erro: '+error.message); return; }
