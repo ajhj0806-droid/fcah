@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-09a)</title>
+<title>FCAH — Controle Financeiro (v2026-09-09b)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -213,7 +213,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-09a · tirar do fluxo</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-09b · convertida</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -676,12 +676,22 @@ async function simCarregarCenario(){
   let body;
   if(!lista.length) body='<div class="empty">Nenhum cenário salvo ainda. Ajuste as quantidades/câmbio e clique em “💾 Salvar cenário”.</div>';
   else{ body='<div class="small muted" style="margin-bottom:8px">Clique no nome (ou em <b>✎ Editar</b>) para carregar a venda na tela, altere os valores e clique em <b>💾 Atualizar venda</b>. Use <b>▶ Fluxo</b> para lançar/atualizar no Fluxo Gerencial.</div><div class="tblwrap"><table id="simCenTbl"><thead><tr><th>Venda</th><th>Salvo em</th><th>Faturamento</th><th>Margem</th><th>No fluxo</th><th></th></tr></thead><tbody>';
-    lista.forEach(c=>{ const r=c.resultado||{}; const fx=c.lote?'<span class="badge rec" title="Esta venda está lançada no Fluxo Gerencial">no fluxo</span>':'<span class="muted">—</span>';
-      const btnConv=c.lote?` <button class="actbtn" style="width:auto;padding:0 10px;color:var(--green);border-color:var(--green)" data-convcen="${c.id}" title="Tornar os lançamentos desta venda REAIS e definitivos no fluxo (remove a marca SIM; não pode ser desfeito pela simulação)">✅ Converter</button>`:'';
-      const btnFluxo=c.lote
-        ? `<button class="actbtn" style="width:auto;padding:0 10px;color:var(--amber);border-color:var(--amber)" data-tirafluxo="${c.id}" title="Remover do Fluxo Gerencial os lançamentos desta venda (a venda salva é mantida)">⤺ Tirar do fluxo</button>`
-        : `<button class="actbtn" style="width:auto;padding:0 10px" data-fluxocen="${c.id}" title="Lançar as receitas e despesas desta venda no Fluxo Gerencial">▶ Fluxo</button>`;
-      body+=`<tr style="cursor:default"><td data-load="${c.id}" style="cursor:pointer"><b>${esc(c.nome)}</b></td><td class="muted">${fmtData(c.criado_em)} ${String(c.criado_em).slice(11,16)}</td><td class="money">R$ ${fmt.format(r.recTot||0)}</td><td>${r.margTot!=null?pct.format(r.margTot):'—'}</td><td>${fx}</td><td class="acts" style="white-space:nowrap">${btnFluxo} <button class="actbtn" style="width:auto;padding:0 10px" data-editcen="${c.id}" title="Carregar esta venda na tela para editar os valores">✎ Editar</button>${btnConv} <button class="actbtn del" style="width:auto;padding:0 10px;color:var(--red);border-color:var(--red)" data-delcen="${c.id}" title="Excluir a venda (e seus lançamentos no fluxo)">✕ Excluir</button></td></tr>`; });
+    const bs='width:auto;height:24px;padding:0 8px;font-size:11px'; // botões compactos
+    lista.forEach(c=>{ const r=c.resultado||{}; const noFluxo=c.lote||c.convertida;
+      const fx=noFluxo?'<span class="badge rec" title="Lançamentos desta venda estão no Fluxo Gerencial">no fluxo</span>':'<span class="muted">—</span>';
+      const btnEditar=`<button class="actbtn" style="${bs}" data-editcen="${c.id}" title="Carregar esta venda na tela para editar os valores">✎ Editar</button>`;
+      const btnExcluir=`<button class="actbtn del" style="${bs};color:var(--red);border-color:var(--red)" data-delcen="${c.id}" title="Excluir a venda${c.convertida?' (os lançamentos já convertidos permanecem no fluxo)':' (e seus lançamentos no fluxo)'}">✕</button>`;
+      let acts;
+      if(c.convertida){
+        acts=`<span class="badge" style="background:rgba(34,197,94,.15);color:var(--green);font-weight:650;margin-right:6px" title="Venda convertida: os lançamentos são reais e definitivos no fluxo">✅ Convertida</span>${btnEditar} ${btnExcluir}`;
+      } else {
+        const btnFluxo=c.lote
+          ? `<button class="actbtn" style="${bs};color:var(--amber);border-color:var(--amber)" data-tirafluxo="${c.id}" title="Remover do Fluxo Gerencial os lançamentos desta venda (a venda salva é mantida)">⤺ Tirar do fluxo</button>`
+          : `<button class="actbtn" style="${bs}" data-fluxocen="${c.id}" title="Lançar as receitas e despesas desta venda no Fluxo Gerencial">▶ Fluxo</button>`;
+        const btnConv=c.lote?` <button class="actbtn" style="${bs};color:var(--green);border-color:var(--green)" data-convcen="${c.id}" title="Tornar os lançamentos desta venda REAIS e definitivos (remove a marca SIM; não pode ser desfeito pela simulação)">✅ Converter</button>`:'';
+        acts=`${btnFluxo} ${btnEditar}${btnConv} ${btnExcluir}`;
+      }
+      body+=`<tr style="cursor:default"><td data-load="${c.id}" style="cursor:pointer"><b>${esc(c.nome)}</b></td><td class="muted">${fmtData(c.criado_em)} ${String(c.criado_em).slice(11,16)}</td><td class="money">R$ ${fmt.format(r.recTot||0)}</td><td>${r.margTot!=null?pct.format(r.margTot):'—'}</td><td>${fx}</td><td class="acts" style="white-space:nowrap">${acts}</td></tr>`; });
     body+='</tbody></table></div>'; }
   openModal('📂 Vendas salvas',body,null); $('#modalCancel').textContent='Fechar';
   { const mw=document.querySelector('#modal .modal'); if(mw){mw.classList.add('wide'); mw.style.maxWidth='min(1220px,95vw)';} }
@@ -791,8 +801,8 @@ async function simConverterVenda(id){ const cen=(SIM._cenarios||[]).find(x=>x.id
   const _e=authEmp();
   let uq=SB.from('fcah_lancamento_tx').update({simulado:false,origem:'venda',lote:null}).eq('lote',cen.lote).eq('origem','venda_sim'); if(_e!=null)uq=uq.eq('empresa_id',_e);
   const {error}=await uq; if(error){toast('Erro ao converter: '+error.message);return;}
-  const {error:ue}=await SB.from('fcah_sim_cenario').update({lote:null,fluxo_cfg:null}).eq('id',id); if(ue){toast('Convertido, mas não limpei o vínculo: '+ue.message);}
-  cen.lote=null; cen.fluxo_cfg=null; if(SIM._cenObj&&SIM._cenObj.id===id){SIM._cenObj.lote=null;SIM._cenObj.fluxo_cfg=null;}
+  const {error:ue}=await SB.from('fcah_sim_cenario').update({lote:null,fluxo_cfg:null,convertida:true}).eq('id',id); if(ue){toast('Convertido, mas não gravei o status: '+ue.message);}
+  cen.lote=null; cen.fluxo_cfg=null; cen.convertida=true; if(SIM._cenObj&&SIM._cenObj.id===id){SIM._cenObj.lote=null;SIM._cenObj.fluxo_cfg=null;SIM._cenObj.convertida=true;}
   await loadLanc(); renderLanc(); renderCaixaGer();
   toast('Venda convertida — lançamentos agora são reais ✓'); simCarregarCenario();
 }
