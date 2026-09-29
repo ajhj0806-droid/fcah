@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-08z)</title>
+<title>FCAH — Controle Financeiro (v2026-09-09a)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -213,7 +213,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-08z · tributo por produto</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-09a · tirar do fluxo</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -320,6 +320,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div class="toolbar">
       <div class="fld"><label>Agrupar por</label><select id="cgModo"><option value="conta">Conta (dentro do grupo)</option><option value="grupo">Somente grupo</option></select></div>
       <div class="fld"><label>Visão</label><select id="cgTipo"><option value="saldo">Saldo (Receitas − Despesas)</option><option value="Receita">Só Receitas</option><option value="Despesa">Só Despesas</option></select></div>
+      <button class="btn sec" id="cgVerVendas" title="Abrir as vendas simuladas salvas (lançar/tirar do fluxo)">📂 Ver Vendas</button>
       <div class="grow"></div>
       <div class="fld"><label>Início (12 meses a partir de)</label><div style="display:flex;gap:4px;align-items:center"><button class="iconbtn" id="cgPrev" title="Mês anterior" type="button">‹</button><select id="cgMes" style="min-width:66px"><option value="0">jan</option><option value="1">fev</option><option value="2">mar</option><option value="3">abr</option><option value="4">mai</option><option value="5">jun</option><option value="6">jul</option><option value="7">ago</option><option value="8">set</option><option value="9">out</option><option value="10">nov</option><option value="11">dez</option></select><select id="cgAno" style="min-width:78px"></select><button class="iconbtn" id="cgNext" title="Próximo mês" type="button">›</button></div></div>
       <button class="btn ghost" id="cgExport">⭳ Exportar CSV</button>
@@ -677,12 +678,16 @@ async function simCarregarCenario(){
   else{ body='<div class="small muted" style="margin-bottom:8px">Clique no nome (ou em <b>✎ Editar</b>) para carregar a venda na tela, altere os valores e clique em <b>💾 Atualizar venda</b>. Use <b>▶ Fluxo</b> para lançar/atualizar no Fluxo Gerencial.</div><div class="tblwrap"><table id="simCenTbl"><thead><tr><th>Venda</th><th>Salvo em</th><th>Faturamento</th><th>Margem</th><th>No fluxo</th><th></th></tr></thead><tbody>';
     lista.forEach(c=>{ const r=c.resultado||{}; const fx=c.lote?'<span class="badge rec" title="Esta venda está lançada no Fluxo Gerencial">no fluxo</span>':'<span class="muted">—</span>';
       const btnConv=c.lote?` <button class="actbtn" style="width:auto;padding:0 10px;color:var(--green);border-color:var(--green)" data-convcen="${c.id}" title="Tornar os lançamentos desta venda REAIS e definitivos no fluxo (remove a marca SIM; não pode ser desfeito pela simulação)">✅ Converter</button>`:'';
-      body+=`<tr style="cursor:default"><td data-load="${c.id}" style="cursor:pointer"><b>${esc(c.nome)}</b></td><td class="muted">${fmtData(c.criado_em)} ${String(c.criado_em).slice(11,16)}</td><td class="money">R$ ${fmt.format(r.recTot||0)}</td><td>${r.margTot!=null?pct.format(r.margTot):'—'}</td><td>${fx}</td><td class="acts" style="white-space:nowrap"><button class="actbtn" style="width:auto;padding:0 10px" data-fluxocen="${c.id}" title="Lançar/atualizar as receitas e despesas desta venda no Fluxo Gerencial">▶ Fluxo</button> <button class="actbtn" style="width:auto;padding:0 10px" data-editcen="${c.id}" title="Carregar esta venda na tela para editar os valores">✎ Editar</button>${btnConv} <button class="actbtn del" style="width:auto;padding:0 10px;color:var(--red);border-color:var(--red)" data-delcen="${c.id}" title="Excluir a venda (e seus lançamentos no fluxo)">✕ Excluir</button></td></tr>`; });
+      const btnFluxo=c.lote
+        ? `<button class="actbtn" style="width:auto;padding:0 10px;color:var(--amber);border-color:var(--amber)" data-tirafluxo="${c.id}" title="Remover do Fluxo Gerencial os lançamentos desta venda (a venda salva é mantida)">⤺ Tirar do fluxo</button>`
+        : `<button class="actbtn" style="width:auto;padding:0 10px" data-fluxocen="${c.id}" title="Lançar as receitas e despesas desta venda no Fluxo Gerencial">▶ Fluxo</button>`;
+      body+=`<tr style="cursor:default"><td data-load="${c.id}" style="cursor:pointer"><b>${esc(c.nome)}</b></td><td class="muted">${fmtData(c.criado_em)} ${String(c.criado_em).slice(11,16)}</td><td class="money">R$ ${fmt.format(r.recTot||0)}</td><td>${r.margTot!=null?pct.format(r.margTot):'—'}</td><td>${fx}</td><td class="acts" style="white-space:nowrap">${btnFluxo} <button class="actbtn" style="width:auto;padding:0 10px" data-editcen="${c.id}" title="Carregar esta venda na tela para editar os valores">✎ Editar</button>${btnConv} <button class="actbtn del" style="width:auto;padding:0 10px;color:var(--red);border-color:var(--red)" data-delcen="${c.id}" title="Excluir a venda (e seus lançamentos no fluxo)">✕ Excluir</button></td></tr>`; });
     body+='</tbody></table></div>'; }
   openModal('📂 Vendas salvas',body,null); $('#modalCancel').textContent='Fechar';
   { const mw=document.querySelector('#modal .modal'); if(mw){mw.classList.add('wide'); mw.style.maxWidth='min(1220px,95vw)';} }
   const tb=$('#simCenTbl');
   if(tb) tb.addEventListener('click',e=>{ const fx=e.target.closest('button[data-fluxocen]'); if(fx){e.stopPropagation();simLancarDialog(+fx.dataset.fluxocen);return;}
+    const tf=e.target.closest('button[data-tirafluxo]'); if(tf){e.stopPropagation();simTirarFluxo(+tf.dataset.tirafluxo);return;}
     const ed=e.target.closest('button[data-editcen]'); if(ed){e.stopPropagation();simAplicarCenario(+ed.dataset.editcen);return;}
     const cv=e.target.closest('button[data-convcen]'); if(cv){e.stopPropagation();simConverterVenda(+cv.dataset.convcen);return;}
     const del=e.target.closest('button[data-delcen]'); if(del){e.stopPropagation();simExcluirCenario(+del.dataset.delcen);return;}
@@ -766,6 +771,18 @@ function simLancarDialog(id){ const cen=(SIM._cenarios||[]).find(x=>x.id===id); 
   </div>`, async()=>{ const N=Math.max(1,Math.min(60,parseInt($('#flcN').value)||1)); const dia=Math.max(1,Math.min(28,parseInt($('#flcD').value)||1));
     const cfg2={sy:+$('#flcY').value, sm:+$('#flcM').value, N, dia};
     const ok=await simGerarLancsFromCenario(cen,cfg2,false); if(!ok)return false; setTimeout(simCarregarCenario,0); return true; });
+}
+// TIRAR DO FLUXO: inverso do ▶ Fluxo — remove os lançamentos simulados desta venda do fluxo, mantendo a venda salva.
+async function simTirarFluxo(id){ const cen=(SIM._cenarios||[]).find(x=>x.id===id); if(!cen){toast('Venda inválida');return;}
+  if(!cen.lote){ toast('Esta venda não está no fluxo.'); return; }
+  if(!confirm('Tirar a venda "'+cen.nome+'" do fluxo?\n\nOs lançamentos dela no Fluxo Gerencial serão removidos. A venda salva é mantida (você pode lançar de novo depois com ▶ Fluxo).')) return;
+  const _e=authEmp();
+  let dq=SB.from('fcah_lancamento_tx').delete().eq('lote',cen.lote).eq('origem','venda_sim'); if(_e!=null)dq=dq.eq('empresa_id',_e);
+  const {error:de}=await dq; if(de){toast('Erro ao tirar do fluxo: '+de.message);return;}
+  const {error:ue}=await SB.from('fcah_sim_cenario').update({lote:null,fluxo_cfg:null}).eq('id',id); if(ue){toast('Removido do fluxo, mas não limpei o vínculo: '+ue.message);}
+  cen.lote=null; cen.fluxo_cfg=null; if(SIM._cenObj&&SIM._cenObj.id===id){SIM._cenObj.lote=null;SIM._cenObj.fluxo_cfg=null;}
+  await loadLanc(); renderLanc(); renderCaixaGer();
+  toast('Venda tirada do fluxo ✓'); simCarregarCenario();
 }
 // CONVERTER VENDA: torna os lançamentos simulados desta venda em REAIS e definitivos (tira a marca SIM e desvincula — não pode ser desfeito pela simulação).
 async function simConverterVenda(id){ const cen=(SIM._cenarios||[]).find(x=>x.id===id); if(!cen){toast('Venda inválida');return;}
@@ -2120,6 +2137,7 @@ function wireGestao(){
   $('#cgAno').onchange=renderCaixaGer;$('#cgModo').onchange=renderCaixaGer;$('#cgTipo').onchange=renderCaixaGer;$('#cgExport').onclick=exportCaixaCSV;
   if($('#cgMes'))$('#cgMes').onchange=renderCaixaGer;
   if($('#cgPrev'))$('#cgPrev').onclick=()=>cgShiftMes(-1); if($('#cgNext'))$('#cgNext').onclick=()=>cgShiftMes(1);
+  if($('#cgVerVendas'))$('#cgVerVendas').onclick=simCarregarCenario;
   $('#cgTbl').addEventListener('click',cgCellClick);
   if($('#slBM')){ $('#slBM').onchange=renderSimLan; $('#slBY').onchange=renderSimLan; $('#slSM').onchange=slResumoUpd; $('#slSY').onchange=slResumoUpd; $('#slN').oninput=slResumoUpd; $('#slGerar').onclick=simLanGerar; }
   $('#cadSubtabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$$('#cadSubtabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');CAD_SUB=b.dataset.s;renderCad();});
