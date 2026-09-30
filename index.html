@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-09c)</title>
+<title>FCAH — Controle Financeiro (v2026-09-30a)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -213,7 +213,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-09c · usuários</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-30a · fluxo por datas</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -529,68 +529,87 @@ async function loadSim(){ if(!SB)return;
     scope(SB.from('fcah_sim_despesa').select('*')).order('id')]);
   SIM.produtos=p.data||[];SIM.tributos=[];SIM.despesas=d.data||[]; // tributo agora é por produto (aliquota na própria linha)
 }
+// ===== MODELO POR DATAS: gera todos os itens (com data_pagamento) de uma venda =====
+// fy/fm = ano/mês (0-based) da 1ª ENTREGA do negócio. Retorna {items:[{cat,gtipo,valor,y,m,day,conta_id,desc}], semConta:[]}
+// cat: receita|custo|tributo|despesa ; gtipo: Venda|Serviço|Mensal
+function addYM(y,m,off){ const t=m+off; return {y:y+Math.floor(t/12), m:((t%12)+12)%12}; }
+function simBuild(produtos, despesas, cambio, fy, fm){
+  cambio=parseNum(cambio)||1;
+  const conv=(v,mo)=>parseNum(v)*(mo==='USD'?cambio:1);
+  const items=[], semConta=[];
+  const push=(cat,gtipo,valor,y,m,day,conta_id,desc)=>{ if(!(valor>0))return; if(conta_id==null && !semConta.includes(desc))semConta.push(desc); items.push({cat,gtipo,valor,y,m,day:day||1,conta_id:(conta_id!=null?conta_id:null),desc}); };
+  const baseM=off=>addYM(fy,fm,off);
+  const entregas=[]; const recebimentos=[];
+  (produtos||[]).forEach(p=>{ const nome=p.nome||'produto'; const aliq=parseNum(p.aliquota||0)/100;
+    if(p.tipo==='Serviço'){ const N=Math.max(1,parseInt(p.n_meses)||1);
+      const recMes=parseNum(p.qtd_padrao)*conv(p.valor_venda,p.moeda); const custoMes=parseNum(p.qtd_padrao)*conv(p.custo_unit,p.moeda);
+      for(let j=0;j<N;j++){ const d=baseM(1+j); // 1ª receita 30 dias após a 1ª entrega
+        push('receita','Serviço',recMes,d.y,d.m,1,p.conta_receita_id,'Receita — '+nome+' (mês '+(j+1)+'/'+N+')');
+        recebimentos.push({y:d.y,m:d.m,valor:recMes,gtipo:'Serviço'});
+        if(custoMes>0)push('custo','Serviço',custoMes,d.y,d.m,1,p.conta_custo_id,'Custo — '+nome+' (mês '+(j+1)+'/'+N+')');
+        if(aliq>0){ const di=baseM(2+j); push('tributo','Serviço',recMes*aliq,di.y,di.m,1,p.conta_tributo_id,'Tributo — '+nome+' (mês '+(j+1)+'/'+N+')'); } }
+    } else { const nE=Math.max(1,parseInt(p.qtd_entregas)||1); const nP=Math.max(1,parseInt(p.qtd_pagamentos)||1); const diasC=Math.max(0,parseInt(p.dias_custo)||0);
+      const qE=parseNum(p.qtd_padrao)/nE; const recE=qE*conv(p.valor_venda,p.moeda); const custoE=qE*conv(p.custo_unit,p.moeda);
+      for(let i=0;i<nE;i++){ const de=baseM(i); entregas.push({off:i,y:de.y,m:de.m,valor:recE}); const parc=recE/nP;
+        for(let k=0;k<nP;k++){ const d=baseM(i+1+k); push('receita','Venda',parc,d.y,d.m,1,p.conta_receita_id,'Receita — '+nome+' (entrega '+(i+1)+', parc '+(k+1)+'/'+nP+')'); recebimentos.push({y:d.y,m:d.m,valor:parc,gtipo:'Venda'}); }
+        if(aliq>0){ const di=baseM(i+1); push('tributo','Venda',recE*aliq,di.y,di.m,1,p.conta_tributo_id,'Tributo — '+nome+' (entrega '+(i+1)+')'); }
+        if(custoE>0){ const bd=new Date(de.y,de.m,1); bd.setDate(bd.getDate()+diasC); push('custo','Venda',custoE,bd.getFullYear(),bd.getMonth(),bd.getDate(),p.conta_custo_id,'Custo — '+nome+' (entrega '+(i+1)+')'); } }
+    }
+  });
+  (despesas||[]).forEach(x=>{ const nome=x.nome||'despesa'; const modo=x.modo; const val=parseNum(x.valor); const regra=x.regra_prazo||'mensal'; const apl=g=>x.tipo==='Ambos'||x.tipo===g;
+    if(regra==='entrega'){ if(!apl('Venda'))return; entregas.forEach(e=>{ const v=modo==='Percentual'?e.valor*val/100:val; const d=addYM(e.y,e.m,1); push('despesa','Venda',v,d.y,d.m,1,x.conta_id,nome+' (após entrega '+(e.off+1)+')'); }); }
+    else if(regra==='recebimento'){ recebimentos.forEach(r=>{ if(!apl(r.gtipo))return; const v=modo==='Percentual'?r.valor*val/100:val; const d=addYM(r.y,r.m,1); push('despesa',r.gtipo,v,d.y,d.m,1,x.conta_id,nome+' (após recebimento)'); }); }
+    else { const N=Math.max(1,parseInt(x.n_meses)||1); for(let mm=0;mm<N;mm++){ const d=baseM(1+mm); const v=modo==='Percentual'?0:val; push('despesa','Mensal',v,d.y,d.m,1,x.conta_id,nome+' (mensal '+(mm+1)+'/'+N+')'); } }
+  });
+  return {items, semConta};
+}
+// Totais do negócio (para a tabela "Resultado") — somam os itens gerados (data é irrelevante p/ totais)
 function computeSim(){
-  const cambio=parseNum($('#simCambio').value)||1;
-  const conv=(v,moeda)=>v*(moeda==='USD'?cambio:1);
-  // Tributo agora é POR PRODUTO: cada produto tem sua própria alíquota (% da sua receita).
-  const R={Venda:{rec:0,custo:0,trib:0},['Serviço']:{rec:0,custo:0,trib:0}};
-  SIM.produtos.forEach(p=>{ const t=p.tipo==='Serviço'?'Serviço':'Venda'; const q=parseNum(p.qtd_padrao); const rec=q*conv(p.valor_venda,p.moeda);
-    R[t].rec+=rec; R[t].custo+=q*conv(p.custo_unit,p.moeda); R[t].trib+=rec*parseNum(p.aliquota||0)/100; });
-  const despPct=t=>SIM.despesas.filter(x=>x.modo==='Percentual'&&(x.tipo===t||x.tipo==='Ambos')).reduce((s,x)=>s+parseNum(x.valor),0)/100;
-  const despValTipo=t=>SIM.despesas.filter(x=>x.modo==='Valor'&&x.tipo===t).reduce((s,x)=>s+parseNum(x.valor),0);
-  const fixas=SIM.despesas.filter(x=>x.tipo==='Fixa').reduce((s,x)=>s+parseNum(x.valor),0);
-  const per={};
-  ['Venda','Serviço'].forEach(t=>{ const rec=R[t].rec,custo=R[t].custo; const trib=R[t].trib; const despV=rec*despPct(t)+despValTipo(t);
-    per[t]={rec,custo,trib,desp:despV,res:rec-custo-trib-despV}; });
+  const {items}=simBuild(SIM.produtos, SIM.despesas, parseNum($('#simCambio').value)||1, 2000, 0);
+  const per={Venda:{rec:0,custo:0,trib:0,desp:0,res:0},['Serviço']:{rec:0,custo:0,trib:0,desp:0,res:0}}; let despMensal=0;
+  items.forEach(it=>{ if(it.gtipo==='Mensal'){ despMensal+=it.valor; return; } const b=per[it.gtipo]; if(!b)return;
+    if(it.cat==='receita')b.rec+=it.valor; else if(it.cat==='custo')b.custo+=it.valor; else if(it.cat==='tributo')b.trib+=it.valor; else b.desp+=it.valor; });
+  ['Venda','Serviço'].forEach(t=>{ per[t].res=per[t].rec-per[t].custo-per[t].trib-per[t].desp; });
   const recTot=per.Venda.rec+per['Serviço'].rec;
   const varTot=per.Venda.custo+per['Serviço'].custo+per.Venda.trib+per['Serviço'].trib+per.Venda.desp+per['Serviço'].desp;
-  const resTot=recTot-varTot-fixas; const margTot=recTot?resTot/recTot:0;
-  const vRatio=recTot?varTot/recTot:0; // variáveis como % do faturamento
-  return {per,recTot,varTot,fixas,resTot,margTot,vRatio,cambio};
+  const fixas=despMensal; const resTot=recTot-varTot-fixas; const margTot=recTot?resTot/recTot:0; const vRatio=recTot?varTot/recTot:0;
+  return {per,recTot,varTot,fixas,resTot,margTot,vRatio,cambio:parseNum($('#simCambio').value)||1};
 }
 function renderSim(){
   if(!$('#simProdTbl'))return;
   if(!SB){ $('#simProdTbl').innerHTML=''; $('#simResTbl').innerHTML='<tbody><tr><td><div class="empty">Conecte ao Supabase para usar o simulador.</div></td></tr></tbody>'; return; }
   const c=computeSim();
-  // Meta = faturamento para cobrir as despesas (resultado zero) — usado no hint da seção 4 (Resultado)
-  const denom=1-c.vRatio;
-  const fatNec = denom>0 ? c.fixas/denom : Infinity;
-  const fator = c.recTot>0 && isFinite(fatNec) ? fatNec/c.recTot : Infinity;
-  // (KPIs do topo removidos — as mesmas informações estão na tabela “4. Resultado”.)
   // 1. Produtos
   const ctaTag=id=> id? esc(ctaNome(id)) : '<span style="color:var(--amber)" title="Associe uma conta para lançar no fluxo">⚠ sem conta</span>';
-  let h='<thead><tr><th style="min-width:180px">Produto/Serviço</th><th>Tipo</th><th>Moeda</th><th>Vlr unit</th><th>Custo unit</th><th>Qtd/mês</th><th>Receita (R$)</th><th>Custo (R$)</th><th>Alíq %</th><th>Tributo (R$)</th><th style="min-width:150px">Conta (fluxo)</th><th></th></tr></thead><tbody>';
-  if(!SIM.produtos.length) h+='<tr><td colspan="12"><div class="empty">Nenhum produto. Clique em “＋ Produto/Serviço”.</div></td></tr>';
-  SIM.produtos.forEach(p=>{ const rec=parseNum(p.qtd_padrao)*p.valor_venda*(p.moeda==='USD'?c.cambio:1); const cu=parseNum(p.qtd_padrao)*p.custo_unit*(p.moeda==='USD'?c.cambio:1); const trib=rec*parseNum(p.aliquota||0)/100;
-    h+=`<tr><td>${esc(p.nome)}</td><td><span class="badge ${p.tipo==='Serviço'?'rec':'desp'}">${esc(p.tipo)}</span></td><td>${p.moeda}</td><td>${fmt2.format(p.valor_venda)}</td><td>${fmt2.format(p.custo_unit)}</td>`+
-      `<td><input type="number" class="simqtd" data-id="${p.id}" value="${p.qtd_padrao}" style="width:80px"></td><td class="money pos">${fmt.format(rec)}</td><td class="money neg">${fmt.format(cu)}</td>`+
-      `<td><input type="number" class="simaliq" data-id="${p.id}" value="${p.aliquota||0}" step="0.01" style="width:64px"> %</td><td class="money neg">${trib?fmt.format(trib):'—'}</td>`+
+  let h='<thead><tr><th style="min-width:160px">Produto/Serviço</th><th>Tipo</th><th>Moeda</th><th>Vlr unit</th><th>Custo unit</th><th>Qtd</th><th>Prazos</th><th>Receita total</th><th>Custo total</th><th>Alíq %</th><th>Tributo</th><th style="min-width:140px">Conta (fluxo)</th><th></th></tr></thead><tbody>';
+  if(!SIM.produtos.length) h+='<tr><td colspan="13"><div class="empty">Nenhum produto. Clique em “＋ Produto/Serviço”.</div></td></tr>';
+  SIM.produtos.forEach(p=>{ const isServ=p.tipo==='Serviço'; const fx=(p.moeda==='USD'?c.cambio:1); const mult=isServ?Math.max(1,parseInt(p.n_meses)||1):1;
+    const rec=parseNum(p.qtd_padrao)*p.valor_venda*fx*mult; const cu=parseNum(p.qtd_padrao)*p.custo_unit*fx*mult; const trib=rec*parseNum(p.aliquota||0)/100;
+    const prazos=isServ?(mult+' mês(es)'):((parseInt(p.qtd_entregas)||1)+' entr · '+(parseInt(p.qtd_pagamentos)||1)+' pgto(s) · custo '+(parseInt(p.dias_custo)||0)+'d');
+    h+=`<tr><td>${esc(p.nome)}</td><td><span class="badge ${isServ?'rec':'desp'}">${esc(p.tipo)}</span></td><td>${p.moeda}</td><td>${fmt2.format(p.valor_venda)}</td><td>${fmt2.format(p.custo_unit)}</td>`+
+      `<td><input type="number" class="simqtd" data-id="${p.id}" value="${p.qtd_padrao}" style="width:78px" title="${isServ?'quantidade por mês':'quantidade total (dividida entre as entregas)'}"></td>`+
+      `<td class="small">${prazos}</td>`+
+      `<td class="money pos">${fmt.format(rec)}</td><td class="money neg">${fmt.format(cu)}</td>`+
+      `<td><input type="number" class="simaliq" data-id="${p.id}" value="${p.aliquota||0}" step="0.01" style="width:60px"> %</td><td class="money neg">${trib?fmt.format(trib):'—'}</td>`+
       `<td class="small">R: ${ctaTag(p.conta_receita_id)}<br>C: ${ctaTag(p.conta_custo_id)}<br>T: ${p.aliquota>0?ctaTag(p.conta_tributo_id):'<span class="muted">—</span>'}</td>`+
       `<td class="acts"><button class="actbtn" data-sact="prod-edit" data-id="${p.id}">✎</button> <button class="actbtn del" data-sact="prod-del" data-id="${p.id}">✕</button></td></tr>`; });
   h+='</tbody>';$('#simProdTbl').innerHTML=h;
   // 2. Despesas
-  const recV=c.per.Venda.rec, recS=c.per['Serviço'].rec;
-  const despValor=d=>{ if(d.tipo==='Fixa')return parseNum(d.valor); const base=d.tipo==='Ambos'?(recV+recS):(d.tipo==='Serviço'?recS:recV); return d.modo==='Percentual'? base*parseNum(d.valor)/100 : parseNum(d.valor); };
-  h='<thead><tr><th style="min-width:160px">Despesa</th><th>Modo</th><th>Valor / %</th><th>Valor (R$)</th><th>Tipo</th><th style="min-width:150px">Conta (fluxo)</th><th></th></tr></thead><tbody>';
+  h='<thead><tr><th style="min-width:150px">Despesa</th><th>Modo</th><th>Valor / %</th><th>Tipo</th><th>Prazo (fluxo)</th><th style="min-width:140px">Conta (fluxo)</th><th></th></tr></thead><tbody>';
   if(!SIM.despesas.length) h+='<tr><td colspan="7"><div class="empty">Nenhuma despesa.</div></td></tr>';
   SIM.despesas.forEach(d=>{ const v=d.modo==='Percentual'?fmt2.format(d.valor)+'%':'R$ '+fmt.format(d.valor);
-    h+=`<tr><td>${esc(d.nome)}</td><td>${esc(d.modo)}</td><td>${v}</td><td class="money neg">${fmt.format(despValor(d))}</td><td>${esc(d.tipo)}</td><td class="small">${ctaTag(d.conta_id)}</td><td class="acts"><button class="actbtn" data-sact="desp-edit" data-id="${d.id}">✎</button> <button class="actbtn del" data-sact="desp-del" data-id="${d.id}">✕</button></td></tr>`; });
+    const regra=d.regra_prazo||'mensal'; const prazo= regra==='entrega'?'por entrega': regra==='recebimento'?'por recebimento': ('mensal × '+(parseInt(d.n_meses)||1));
+    h+=`<tr><td>${esc(d.nome)}</td><td>${esc(d.modo)}</td><td>${v}</td><td>${esc(d.tipo)}</td><td class="small">${prazo}</td><td class="small">${ctaTag(d.conta_id)}</td><td class="acts"><button class="actbtn" data-sact="desp-edit" data-id="${d.id}">✎</button> <button class="actbtn del" data-sact="desp-del" data-id="${d.id}">✕</button></td></tr>`; });
   h+='</tbody>';$('#simDespTbl').innerHTML=h;
-  // 4. Resultado
+  // 3. Resultado (totais do negócio — soma de todas as entregas/meses)
   h='<thead><tr><th>Linha</th><th>Receitas</th><th>Tributos</th><th>Custos</th><th>Despesas</th><th>Resultado</th><th>Margem %</th></tr></thead><tbody>';
   const rowRes=(nome,o,cls)=>`<tr class="${cls||''}"><td>${nome}</td><td class="money pos">${fmt.format(o.rec)}</td><td class="money neg">${o.trib?fmt.format(o.trib):'—'}</td><td class="money neg">${o.custo?fmt.format(o.custo):'—'}</td><td class="money neg">${o.desp?fmt.format(o.desp):'—'}</td><td class="money ${o.res<0?'neg':'pos'}">${fmt.format(o.res)}</td><td>${o.rec?pct.format(o.res/o.rec):'—'}</td></tr>`;
-  h+=rowRes('Venda',c.per.Venda);
+  h+=rowRes('Venda (equipamentos)',c.per.Venda);
   h+=rowRes('Serviço / SaaS',c.per['Serviço']);
-  h+=`<tr><td>Despesas fixas</td><td>—</td><td>—</td><td>—</td><td class="money neg">${fmt.format(c.fixas)}</td><td class="money neg">-${fmt.format(c.fixas)}</td><td>—</td></tr>`;
-  h+=`<tr class="tot"><td>TOTAL</td><td class="money pos">${fmt.format(c.recTot)}</td><td class="money neg">${fmt.format(c.per.Venda.trib+c.per['Serviço'].trib)}</td><td class="money neg">${fmt.format(c.per.Venda.custo+c.per['Serviço'].custo)}</td><td class="money neg">${fmt.format(c.per.Venda.desp+c.per['Serviço'].desp+c.fixas)}</td><td class="money ${c.resTot<0?'neg':'pos'}">${fmt.format(c.resTot)}</td><td>${pct.format(c.margTot)}</td></tr>`;
+  h+=`<tr><td>Despesas mensais</td><td>—</td><td>—</td><td>—</td><td class="money neg">${fmt.format(c.fixas)}</td><td class="money neg">-${fmt.format(c.fixas)}</td><td>—</td></tr>`;
+  h+=`<tr class="tot"><td>TOTAL do negócio</td><td class="money pos">${fmt.format(c.recTot)}</td><td class="money neg">${fmt.format(c.per.Venda.trib+c.per['Serviço'].trib)}</td><td class="money neg">${fmt.format(c.per.Venda.custo+c.per['Serviço'].custo)}</td><td class="money neg">${fmt.format(c.per.Venda.desp+c.per['Serviço'].desp+c.fixas)}</td><td class="money ${c.resTot<0?'neg':'pos'}">${fmt.format(c.resTot)}</td><td>${pct.format(c.margTot)}</td></tr>`;
   h+='</tbody>';$('#simResTbl').innerHTML=h;
-  // Meta hint
-  let mh;
-  if(!isFinite(fatNec)) mh=`⚠️ As despesas variáveis já são <b>${pct.format(c.vRatio)}</b> do faturamento (≥ 100%): a operação não cobre as despesas em nenhum volume. Reduza custos, impostos ou despesas.`;
-  else { const dv=fatNec-c.recTot; mh=`Variáveis = <b>${pct.format(c.vRatio)}</b> do faturamento · Despesas fixas = <b>R$ ${fmt.format(c.fixas)}</b>/mês.<br>`+
-    `Para <b>cobrir todas as despesas</b> (resultado zero), é preciso faturar <b>R$ ${fmt.format(fatNec)}</b>/mês `+
-    `(${dv>=0?'faltam +R$ '+fmt.format(dv):'já cobre, sobra R$ '+fmt.format(-dv)} vs. o atual · fator <b>${isFinite(fator)?fmt2.format(fator)+'×':'—'}</b> nas quantidades).`; }
-  $('#simMetaHint').innerHTML=mh;
+  $('#simMetaHint').innerHTML=`Totais somam <b>todas as entregas e meses</b> do negócio. Resultado do negócio: <b class="money ${c.resTot<0?'neg':'pos'}">R$ ${fmt.format(c.resTot)}</b> · margem <b>${pct.format(c.margTot)}</b>. As datas de cada lançamento no Fluxo são calculadas a partir da <b>Data da 1ª entrega</b> (informada ao lançar).`;
   const editing=SIM._cenId!=null;
   const cl=$('#simCenAtual'); if(cl) cl.innerHTML = editing
     ? '✏️ Editando venda: <span class="badge" style="background:var(--accent);color:#fff;font-size:13px;padding:3px 11px;letter-spacing:.3px">'+esc(SIM._cenNome||'')+'</span> — as alterações vão para esta venda ao clicar em <b>Atualizar venda</b>. <a href="#" id="simNovoCen">iniciar nova</a>'
@@ -618,14 +637,20 @@ function simFormProd(p){ p=p||{};
     <div class="fld"><label>Moeda</label>${selTipo('sp_moeda',p.moeda||'BRL',['BRL','USD'])}</div>
     <div class="fld"><label>Valor de venda (unit)</label><input type="number" id="sp_valor" step="0.01" value="${p.valor_venda||''}"></div>
     <div class="fld"><label>Custo unitário</label><input type="number" id="sp_custo" step="0.01" value="${p.custo_unit||''}"></div>
-    <div class="fld"><label>Quantidade / mês</label><input type="number" id="sp_qtd" value="${p.qtd_padrao||0}"></div>
+    <div class="fld"><label>Quantidade <span class="muted small">(Venda: total · Serviço: por mês)</span></label><input type="number" id="sp_qtd" value="${p.qtd_padrao||0}"></div>
     <div class="fld"><label>Unidade</label><input type="text" id="sp_un" value="${esc(p.unidade)}"></div>
     <div class="fld"><label>Alíquota de tributo %</label><input type="number" id="sp_aliq" step="0.01" value="${p.aliquota||0}"></div>
+    <div class="full" style="font-weight:650;color:var(--txt2);font-size:11px;text-transform:uppercase;letter-spacing:.3px;margin-top:2px">Prazos p/ o Fluxo</div>
+    <div class="fld"><label>Qtde de entregas <span class="muted small">(Venda)</span></label><input type="number" id="sp_ent" value="${p.qtd_entregas||1}" min="1"></div>
+    <div class="fld"><label>Qtde de pagamentos <span class="muted small">(Venda)</span></label><input type="number" id="sp_pag" value="${p.qtd_pagamentos||1}" min="1"></div>
+    <div class="fld"><label>Dias p/ 1º pgto de custo <span class="muted small">(Venda)</span></label><input type="number" id="sp_diasc" value="${p.dias_custo!=null?p.dias_custo:30}" min="0"></div>
+    <div class="fld"><label>Nº de meses <span class="muted small">(Serviço)</span></label><input type="number" id="sp_nmeses" value="${p.n_meses||1}" min="1"></div>
+    <div class="full" style="font-weight:650;color:var(--txt2);font-size:11px;text-transform:uppercase;letter-spacing:.3px;margin-top:2px">Contas no Fluxo</div>
     <div class="fld"><label>Conta de RECEITA (fluxo)</label><select id="sp_cr">${contaOptsNat(p.conta_receita_id,'Receita')}</select></div>
     <div class="fld"><label>Conta de CUSTO (fluxo)</label><select id="sp_cc">${contaOptsNat(p.conta_custo_id,'Despesa')}</select></div>
     <div class="fld"><label>Conta de TRIBUTO (fluxo)</label><select id="sp_ct">${contaOptsNat(p.conta_tributo_id,'Despesa')}</select></div>
-    <div class="hint full">As contas definem onde a receita, o custo e o tributo deste produto entram no Fluxo Gerencial ao lançar. A <b>alíquota</b> incide sobre a receita do produto. Contas em branco não são lançadas no fluxo.</div>
-  </div>`, async()=>{ const payload={nome:$('#sp_nome').value.trim(),tipo:$('#sp_tipo').value,moeda:$('#sp_moeda').value,valor_venda:parseNum($('#sp_valor').value),custo_unit:parseNum($('#sp_custo').value),qtd_padrao:parseNum($('#sp_qtd').value),unidade:$('#sp_un').value.trim()||null,aliquota:parseNum($('#sp_aliq').value),conta_receita_id:(+$('#sp_cr').value||null),conta_custo_id:(+$('#sp_cc').value||null),conta_tributo_id:(+$('#sp_ct').value||null)};
+    <div class="hint full"><b>Venda (equipamento):</b> a Quantidade é o total, dividido pelas entregas (mensais). Cada entrega gera receita paga em N pagamentos (1º 30 dias após a entrega), imposto 30 dias após a entrega, e custo pago uma vez (dias informados após a entrega).<br><b>Serviço:</b> receita mensal (qtd × valor) por Nº de meses, a 1ª 30 dias após a 1ª entrega. Contas em branco não são lançadas no fluxo.</div>
+  </div>`, async()=>{ const payload={nome:$('#sp_nome').value.trim(),tipo:$('#sp_tipo').value,moeda:$('#sp_moeda').value,valor_venda:parseNum($('#sp_valor').value),custo_unit:parseNum($('#sp_custo').value),qtd_padrao:parseNum($('#sp_qtd').value),unidade:$('#sp_un').value.trim()||null,aliquota:parseNum($('#sp_aliq').value),qtd_entregas:Math.max(1,parseInt($('#sp_ent').value)||1),qtd_pagamentos:Math.max(1,parseInt($('#sp_pag').value)||1),dias_custo:Math.max(0,parseInt($('#sp_diasc').value)||0),n_meses:Math.max(1,parseInt($('#sp_nmeses').value)||1),conta_receita_id:(+$('#sp_cr').value||null),conta_custo_id:(+$('#sp_cc').value||null),conta_tributo_id:(+$('#sp_ct').value||null)};
     if(!payload.nome){toast('Informe o nome');return false;} let e2;
     if(p.id)({error:e2}=await SB.from('fcah_sim_produto').update(payload).eq('id',p.id)); else ({error:e2}=await SB.from('fcah_sim_produto').insert(withEmp(payload)));
     if(e2){toast('Erro: '+e2.message);return false;} SIM._cen=null;await loadSim();renderSim();toast('Salvo ✓');return true; });
@@ -641,15 +666,18 @@ function simFormTrib(t){ t=t||{};
     if(t.id)({error:e2}=await SB.from('fcah_sim_tributo').update(payload).eq('id',t.id)); else ({error:e2}=await SB.from('fcah_sim_tributo').insert(withEmp(payload)));
     if(e2){toast('Erro: '+e2.message);return false;} SIM._cen=null;await loadSim();renderSim();toast('Salvo ✓');return true; });
 }
-function simFormDesp(d){ d=d||{};
+function simFormDesp(d){ d=d||{}; const regra=d.regra_prazo||'mensal';
+  const regraSel=`<select id="sd_regra"><option value="entrega" ${regra==='entrega'?'selected':''}>Por entrega (30 dias após cada entrega)</option><option value="recebimento" ${regra==='recebimento'?'selected':''}>Por recebimento (30 dias após cada recebimento)</option><option value="mensal" ${regra==='mensal'?'selected':''}>Mensal por N meses (1ª 30 dias após a 1ª entrega)</option></select>`;
   openModal((d.id?'Editar':'Nova')+' despesa',`<div class="form-grid">
     <div class="fld full"><label>Nome</label><input type="text" id="sd_nome" value="${esc(d.nome)}"></div>
     <div class="fld"><label>Modo</label>${selTipo('sd_modo',d.modo||'Percentual',['Percentual','Valor'])}</div>
     <div class="fld"><label>Valor (% ou R$)</label><input type="number" id="sd_valor" step="0.01" value="${d.valor||''}"></div>
-    <div class="fld full"><label>Tipo</label>${selTipo('sd_tipo',d.tipo||'Ambos',['Venda','Serviço','Ambos','Fixa'])}</div>
+    <div class="fld"><label>Incide em</label>${selTipo('sd_tipo',d.tipo||'Ambos',['Venda','Serviço','Ambos'])}</div>
+    <div class="fld"><label>Nº de meses <span class="muted small">(regra Mensal)</span></label><input type="number" id="sd_nmeses" value="${d.n_meses||1}" min="1"></div>
+    <div class="fld full"><label>Regra de prazo (Fluxo)</label>${regraSel}</div>
     <div class="fld full"><label>Conta de DESPESA (fluxo)</label><select id="sd_conta">${contaOptsNat(d.conta_id,'Despesa')}</select></div>
-    <div class="hint full">% incide sobre o faturamento do tipo. "Fixa" = valor em R$/mês independente da venda.</div>
-  </div>`, async()=>{ const payload={nome:$('#sd_nome').value.trim(),modo:$('#sd_modo').value,valor:parseNum($('#sd_valor').value),tipo:$('#sd_tipo').value,conta_id:(+$('#sd_conta').value||null)};
+    <div class="hint full"><b>Por entrega:</b> lançada 30 dias após cada entrega (% sobre a receita da entrega, ou R$). <b>Por recebimento:</b> 30 dias após cada recebimento (% sobre o recebimento, ou R$) — ex.: comissão. <b>Mensal por N meses:</b> valor fixo em R$/mês por N meses, a 1ª 30 dias após a 1ª entrega.</div>
+  </div>`, async()=>{ const payload={nome:$('#sd_nome').value.trim(),modo:$('#sd_modo').value,valor:parseNum($('#sd_valor').value),tipo:$('#sd_tipo').value,regra_prazo:$('#sd_regra').value,n_meses:Math.max(1,parseInt($('#sd_nmeses').value)||1),conta_id:(+$('#sd_conta').value||null)};
     if(!payload.nome){toast('Informe o nome');return false;} let e2;
     if(d.id)({error:e2}=await SB.from('fcah_sim_despesa').update(payload).eq('id',d.id)); else ({error:e2}=await SB.from('fcah_sim_despesa').insert(withEmp(payload)));
     if(e2){toast('Erro: '+e2.message);return false;} SIM._cen=null;await loadSim();renderSim();toast('Salvo ✓');return true; });
@@ -676,7 +704,7 @@ async function simCarregarCenario(){
   const lista=data||[]; SIM._cenarios=lista;
   let body;
   if(!lista.length) body='<div class="empty">Nenhum cenário salvo ainda. Ajuste as quantidades/câmbio e clique em “💾 Salvar cenário”.</div>';
-  else{ body='<div class="small muted" style="margin-bottom:8px">Clique no nome (ou em <b>✎ Editar</b>) para carregar a venda na tela, altere os valores e clique em <b>💾 Atualizar venda</b>. Use <b>▶ Fluxo</b> para lançar/atualizar no Fluxo Gerencial.</div><div class="tblwrap"><table id="simCenTbl"><thead><tr><th>Venda</th><th>Salvo em</th><th>Faturamento</th><th>Margem</th><th>No fluxo</th><th></th></tr></thead><tbody>';
+  else{ body='<div class="small muted" style="margin-bottom:8px">Clique no nome (ou em <b>✎ Editar</b>) para carregar a venda na tela, altere os valores e clique em <b>💾 Atualizar venda</b>. Use <b>▶ Fluxo</b> para lançar/atualizar no Fluxo Gerencial.</div><div class="tblwrap"><table id="simCenTbl"><thead><tr><th>Venda</th><th>Data 1ª entrega</th><th>Faturamento</th><th>Margem</th><th>No fluxo</th><th></th></tr></thead><tbody>';
     const bs='width:auto;height:24px;padding:0 8px;font-size:11px'; // botões compactos
     lista.forEach(c=>{ const r=c.resultado||{}; const noFluxo=c.lote||c.convertida;
       const fx=noFluxo?'<span class="badge rec" title="Lançamentos desta venda estão no Fluxo Gerencial">no fluxo</span>':'<span class="muted">—</span>';
@@ -692,7 +720,8 @@ async function simCarregarCenario(){
         const btnConv=c.lote?` <button class="actbtn" style="${bs};color:var(--green);border-color:var(--green)" data-convcen="${c.id}" title="Tornar os lançamentos desta venda REAIS e definitivos (remove a marca SIM; não pode ser desfeito pela simulação)">✅ Converter</button>`:'';
         acts=`${btnFluxo} ${btnEditar}${btnConv} ${btnExcluir}`;
       }
-      body+=`<tr style="cursor:default"><td data-load="${c.id}" style="cursor:pointer"><b>${esc(c.nome)}</b></td><td class="muted">${fmtData(c.criado_em)} ${String(c.criado_em).slice(11,16)}</td><td class="money">R$ ${fmt.format(r.recTot||0)}</td><td>${r.margTot!=null?pct.format(r.margTot):'—'}</td><td>${fx}</td><td class="acts" style="white-space:nowrap">${acts}</td></tr>`; });
+      const cfgd=c.fluxo_cfg; const d1e=(cfgd&&cfgd.sm!=null&&cfgd.sy!=null)?(MESES[cfgd.sm]+'/'+String(cfgd.sy).slice(2)):'<span class="muted">—</span>';
+      body+=`<tr style="cursor:default"><td data-load="${c.id}" style="cursor:pointer"><b>${esc(c.nome)}</b></td><td class="muted">${d1e}</td><td class="money">R$ ${fmt.format(r.recTot||0)}</td><td>${r.margTot!=null?pct.format(r.margTot):'—'}</td><td>${fx}</td><td class="acts" style="white-space:nowrap">${acts}</td></tr>`; });
     body+='</tbody></table></div>'; }
   openModal('📂 Vendas salvas',body,null); $('#modalCancel').textContent='Fechar';
   { const mw=document.querySelector('#modal .modal'); if(mw){mw.classList.add('wide'); mw.style.maxWidth='min(1220px,95vw)';} }
@@ -714,8 +743,8 @@ async function simAplicarCenario(id){
   if(full){
     if(!confirm('Carregar "'+c.nome+'" vai SUBSTITUIR os produtos e despesas atuais pelos desta venda (o estado atual não salvo será perdido). Continuar?')) return;
     try{
-      await simRestoreTable('fcah_sim_produto', d.produtos||[], ['nome','tipo','moeda','valor_venda','custo_unit','qtd_padrao','unidade','ativo','aliquota','conta_receita_id','conta_custo_id','conta_tributo_id']);
-      await simRestoreTable('fcah_sim_despesa', d.despesas||[], ['nome','modo','valor','tipo','ativo','conta_id']);
+      await simRestoreTable('fcah_sim_produto', d.produtos||[], ['nome','tipo','moeda','valor_venda','custo_unit','qtd_padrao','unidade','ativo','aliquota','qtd_entregas','qtd_pagamentos','dias_custo','n_meses','conta_receita_id','conta_custo_id','conta_tributo_id']);
+      await simRestoreTable('fcah_sim_despesa', d.despesas||[], ['nome','modo','valor','tipo','ativo','regra_prazo','n_meses','conta_id']);
     }catch(e){toast('Erro ao restaurar: '+e.message); await loadSim(); renderSim(); return;}
     if(d.cambio) $('#simCambio').value=d.cambio;
     await loadSim();
@@ -728,34 +757,16 @@ async function simAplicarCenario(id){
   SIM._cen=c.nome; SIM._cenId=c.id; SIM._cenNome=c.nome; SIM._cenObj=c; const inp=$('#simCenNome'); if(inp)inp.value=c.nome;
   closeModal(); renderSim(); toast('Venda "'+c.nome+'" carregada para edição — altere os valores e clique em 💾 Atualizar venda ✓');
 }
-// ---- Lançar cenário de VENDAS no Fluxo Gerencial (receitas/despesas detalhadas, ligadas a contas) ----
-// Extrai os itens detalhados de um snapshot de cenário {cambio,produtos,tributos,despesas}.
-function simDetalhado(d){ d=d||{};
-  const cambio=parseNum(d.cambio)||1; const conv=(v,moeda)=>parseNum(v)*(moeda==='USD'?cambio:1);
-  const prods=d.produtos||[], desps=d.despesas||[];
-  let recV=0,recS=0; prods.forEach(p=>{ const r=parseNum(p.qtd_padrao)*conv(p.valor_venda,p.moeda); if(p.tipo==='Serviço')recS+=r; else recV+=r; });
-  const baseTipo=t=> t==='Ambos'?(recV+recS):(t==='Serviço'?recS:recV);
-  const items=[], semConta=[];
-  const push=o=>{ if(!(o.valor>0))return; if(o.conta_id==null){ if(!semConta.includes(o.nome))semConta.push(o.nome); return; } items.push(o); };
-  prods.forEach(p=>{ const rec=parseNum(p.qtd_padrao)*conv(p.valor_venda,p.moeda); const cst=parseNum(p.qtd_padrao)*conv(p.custo_unit,p.moeda); const trib=rec*parseNum(p.aliquota||0)/100;
-    push({tipo:'Receita',valor:rec,conta_id:p.conta_receita_id,nome:(p.nome||'produto')+' (receita)',desc:'Receita — '+(p.nome||'produto')});
-    push({tipo:'Despesa',valor:cst,conta_id:p.conta_custo_id,nome:(p.nome||'produto')+' (custo)',desc:'Custo — '+(p.nome||'produto')});
-    push({tipo:'Despesa',valor:trib,conta_id:p.conta_tributo_id,nome:(p.nome||'produto')+' (tributo)',desc:'Tributo — '+(p.nome||'produto')}); });
-  desps.forEach(x=>{ const val=x.modo==='Percentual'?baseTipo(x.tipo)*parseNum(x.valor)/100:parseNum(x.valor);
-    push({tipo:'Despesa',valor:val,conta_id:x.conta_id,nome:(x.nome||'despesa'),desc:'Despesa — '+(x.nome||'despesa')}); });
-  return {items,semConta};
-}
-// Gera (ou regenera) os lançamentos do cenário no fluxo. cfg={sy,sm,N,dia}. silent evita confirm/toast.
+// ---- Lançar cenário de VENDAS no Fluxo Gerencial (modelo por datas a partir da 1ª entrega) ----
+// Gera (ou regenera) os lançamentos do cenário no fluxo. cfg={sy,sm} = ano/mês (0-based) da 1ª entrega.
 async function simGerarLancsFromCenario(cen,cfg,silent){
-  const {items,semConta}=simDetalhado(cen.dados||{});
-  if(!items.length){ if(!silent)toast('Nenhum item com conta associada para lançar. Associe contas de receita/despesa aos itens.'); return false; }
-  const lote=cen.lote||uuid(); const rows=[];
-  const nEnt=Math.max(1,cfg.N||1); // qtde de entregas/pagamentos — o valor de cada item é dividido por este número
-  for(let i=0;i<nEnt;i++){ const idx=cfg.sm+i; const ty=cfg.sy+Math.floor(idx/12); const tm=((idx%12)+12)%12; const dp=simDataAlvo(ty,tm,cfg.dia);
-    items.forEach(it=>{ const conta=G.contas.find(c=>c.id===it.conta_id); const gid=conta?conta.grupo_id:null;
-      rows.push({tipo:it.tipo,valor:Math.abs(it.valor/nEnt),grupo_id:gid,conta_id:it.conta_id,meio_id:null,data_compra:dp,data_pagamento:dp,descricao:it.desc+(nEnt>1?(' ('+(i+1)+'/'+nEnt+')'):'')+' · Venda: '+cen.nome,parcela_num:i+1,parcela_total:nEnt,lote,fonte:'Venda: '+cen.nome,origem:'venda_sim',simulado:true}); }); }
+  const d=cen.dados||{}; const {items,semConta}=simBuild(d.produtos, d.despesas, d.cambio, cfg.sy, cfg.sm);
+  const lancaveis=items.filter(it=>it.conta_id!=null);
+  if(!lancaveis.length){ if(!silent)toast('Nenhum item com conta associada para lançar. Associe contas de receita/custo/tributo/despesa aos itens.'); return false; }
+  const lote=cen.lote||uuid(); const tipoCat=cat=>cat==='receita'?'Receita':'Despesa';
+  const rows=lancaveis.map(it=>{ const conta=G.contas.find(c=>c.id===it.conta_id); const gid=conta?conta.grupo_id:null; const dp=simDataAlvo(it.y,it.m,it.day);
+    return {tipo:tipoCat(it.cat),valor:Math.abs(it.valor),grupo_id:gid,conta_id:it.conta_id,meio_id:null,data_compra:dp,data_pagamento:dp,descricao:it.desc+' · Venda: '+cen.nome,parcela_num:1,parcela_total:1,lote,fonte:'Venda: '+cen.nome,origem:'venda_sim',simulado:true}; });
   const _e=authEmp();
-  // se já estava lançado, remove os antigos deste lote antes de reinserir (substituição)
   if(cen.lote){ let dq=SB.from('fcah_lancamento_tx').delete().eq('lote',cen.lote).eq('origem','venda_sim'); if(_e!=null)dq=dq.eq('empresa_id',_e); const {error:de}=await dq; if(de){toast('Erro ao limpar lançamentos anteriores: '+de.message);return false;} }
   const {error}=await SB.from('fcah_lancamento_tx').insert(withEmp(rows)); if(error){toast('Erro ao lançar no fluxo: '+error.message);return false;}
   const {error:ue}=await SB.from('fcah_sim_cenario').update({lote,fluxo_cfg:cfg}).eq('id',cen.id); if(ue){toast('Lançado, mas não gravei o vínculo: '+ue.message);} cen.lote=lote; cen.fluxo_cfg=cfg;
@@ -763,24 +774,20 @@ async function simGerarLancsFromCenario(cen,cfg,silent){
   if(!silent) toast(rows.length+' lançamento(s) no fluxo ✓'+(semConta.length?(' · '+semConta.length+' item(ns) sem conta ignorado(s)'):''));
   return true;
 }
-// Diálogo para escolher período (mês/ano início, nº meses, dia) e lançar o cenário no fluxo.
+// Diálogo: só a Data da 1ª entrega do negócio. Tudo mais vem dos cadastros de produto/despesa.
 function simLancarDialog(id){ const cen=(SIM._cenarios||[]).find(x=>x.id===id); if(!cen){toast('Cenário inválido');return;}
-  const {items,semConta}=simDetalhado(cen.dados||{});
   const cfg=cen.fluxo_cfg||{}; const now=new Date(); const sm=cfg.sm!=null?cfg.sm:now.getMonth(), sy=cfg.sy!=null?cfg.sy:now.getFullYear(); const mo=simMesAnoOpts(sm,sy);
   const jaLanc=!!cen.lote;
-  const avisos = semConta.length? `<div class="hint full" style="color:var(--amber)">⚠ ${semConta.length} item(ns) sem conta associada serão ignorados: ${esc(semConta.slice(0,6).join(', '))}${semConta.length>6?'…':''}. Associe contas no cadastro dos itens para incluí-los.</div>`:'';
-  const nItens=items.length;
-  const nEnt=cfg.N||1;
+  const prev=simBuild((cen.dados||{}).produtos,(cen.dados||{}).despesas,(cen.dados||{}).cambio, sy, sm);
+  const nLanc=prev.items.filter(it=>it.conta_id!=null).length;
+  const avisos = prev.semConta.length? `<div class="hint full" style="color:var(--amber)">⚠ ${prev.semConta.length} lançamento(s) sem conta associada serão ignorados. Associe as contas no cadastro dos itens para incluí-los.</div>`:'';
   openModal((jaLanc?'Atualizar':'Lançar')+' no Fluxo — '+esc(cen.nome), `<div class="form-grid">
-    <div class="full" style="font-weight:650;color:var(--txt2);font-size:11px;text-transform:uppercase;letter-spacing:.3px">Mês inicial de pagamento</div>
-    <div class="fld"><label>Mês inicial</label><select id="flcM">${mo.m}</select></div>
-    <div class="fld"><label>Ano inicial</label><select id="flcY">${mo.y}</select></div>
-    <div class="fld"><label>Qtde de entregas / pagamentos</label><input type="number" id="flcN" value="${nEnt}" min="1" max="60"></div>
-    <div class="fld"><label>Dia do mês</label><input type="number" id="flcD" value="${cfg.dia||1}" min="1" max="28"></div>
-    <div class="hint full">O valor de cada receita/despesa é <b>dividido pela quantidade de entregas/pagamentos</b> e lançado 1 por mês (padrão 1 = valor cheio em um mês). Serão gerados <b>${nItens}</b> item(ns) × entregas, cada um na sua conta, marcados como <b>🧪 SIM</b> e identificados por <b>“Venda: ${esc(cen.nome)}”</b>.${jaLanc?' <b>Esta venda já está no fluxo</b> — os lançamentos anteriores serão substituídos.':''}</div>
+    <div class="full" style="font-weight:650;color:var(--txt2);font-size:11px;text-transform:uppercase;letter-spacing:.3px">Data da 1ª entrega do negócio <span class="muted small" style="text-transform:none">(dia sempre 01)</span></div>
+    <div class="fld"><label>Mês</label><select id="flcM">${mo.m}</select></div>
+    <div class="fld"><label>Ano</label><select id="flcY">${mo.y}</select></div>
+    <div class="hint full">A partir desta data são calculadas todas as datas: entregas mensais, recebimentos (30 dias após cada entrega, em N pagamentos), impostos (30 dias após cada entrega), custos (dias informados após cada entrega) e despesas/serviços conforme suas regras. Serão gerados <b>${nLanc}</b> lançamento(s), marcados como <b>🧪 SIM</b> e identificados por <b>“Venda: ${esc(cen.nome)}”</b>.${jaLanc?' <b>Esta venda já está no fluxo</b> — os lançamentos anteriores serão substituídos.':''}</div>
     ${avisos}
-  </div>`, async()=>{ const N=Math.max(1,Math.min(60,parseInt($('#flcN').value)||1)); const dia=Math.max(1,Math.min(28,parseInt($('#flcD').value)||1));
-    const cfg2={sy:+$('#flcY').value, sm:+$('#flcM').value, N, dia};
+  </div>`, async()=>{ const cfg2={sy:+$('#flcY').value, sm:+$('#flcM').value};
     const ok=await simGerarLancsFromCenario(cen,cfg2,false); if(!ok)return false; setTimeout(simCarregarCenario,0); return true; });
 }
 // TIRAR DO FLUXO: inverso do ▶ Fluxo — remove os lançamentos simulados desta venda do fluxo, mantendo a venda salva.
@@ -1218,6 +1225,9 @@ function svLanc(l){ return (l.tipo==='Receita'?1:-1)*(+l.valor||0); }
 function renderLanc(){
   if(!$('#lancTbl'))return;
   if(!SB){semDB('#lancTbl','#lancEmpty');$('#lancKpis').innerHTML='';return;}
+  const _v=id=>(($('#'+id)&&$('#'+id).value)||'').trim();
+  const temFiltro=!!(_v('lfQ')||_v('lfGrupo')||_v('lfConta')||_v('lfMeio')||_v('lfTipo')||_v('lfVmin')||_v('lfVmax')||_v('lfIni')||_v('lfFim')||_v('lfFonte'));
+  if(!temFiltro){ $('#lancKpis').innerHTML=''; $('#lancTbl').innerHTML=''; $('#lancEmpty').innerHTML='<div class="empty">🔎 Use os filtros acima para exibir os lançamentos.<br><span class="small muted">Por padrão a lista completa não é mostrada (evita carregar milhares de registros).</span></div>'; return; }
   const rows=filtroLanc();
   let rec=0,desp=0; rows.forEach(l=>{ if(l.tipo==='Receita')rec+=(+l.valor||0); else desp+=(+l.valor||0); }); // por tipo, respeitando o sinal
   $('#lancKpis').innerHTML=
