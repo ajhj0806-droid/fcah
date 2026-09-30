@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-30a)</title>
+<title>FCAH — Controle Financeiro (v2026-09-30b)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -213,7 +213,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-30a · fluxo por datas</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-30b · export lançamentos</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -305,6 +305,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
       <div class="grow"></div>
       <button class="btn" id="btnNovoLanc">＋ Novo lançamento</button>
       <button class="btn sec" id="btnImport">⭱ Importar CSV/XLSX</button>
+      <button class="btn ghost" id="btnExportLanc" title="Exportar em CSV os lançamentos do filtro atual">⭳ Exportar CSV</button>
       <button class="btn ghost" id="btnDelFut">🗑 Excluir futuros</button>
       <button class="btn ghost" id="btnDelImport" title="Exclui todos os lançamentos de uma importação">🗑 Excluir importação</button>
       <input type="file" id="fileImp" accept=".csv,.xlsx,.xls" style="display:none">
@@ -1915,6 +1916,23 @@ function cgEnsureAno(y){ const sel=$('#cgAno'); if(!sel)return; if(![...sel.opti
 function cgShiftMes(delta){ const anoSel=$('#cgAno'), mesSel=$('#cgMes'); if(!anoSel||!mesSel)return;
   let y=+anoSel.value||new Date().getFullYear(); let m=(+mesSel.value||0)+delta; y+=Math.floor(m/12); m=((m%12)+12)%12;
   cgEnsureAno(y); mesSel.value=String(m); renderCaixaGer(); }
+// Exporta em CSV os lançamentos do FILTRO atual da aba Lançamentos
+function exportLancCSV(){
+  const rows=filtroLanc();
+  if(!rows.length){toast('Nada para exportar — aplique um filtro que retorne lançamentos.');return;}
+  const q=s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';
+  const num=v=>Number(v||0).toFixed(2).replace('.',',');
+  const head=['Data pagamento','Descrição','Tipo','Grupo','Conta','Fonte','Meio','Parcela','Valor','Simulado'];
+  const lines=[head.map(q).join(';')];
+  rows.slice().sort((a,b)=>String(a.data_pagamento||'').localeCompare(String(b.data_pagamento||''))).forEach(l=>{
+    const gid=l.grupo_id||((G.contas.find(c=>c.id===l.conta_id)||{}).grupo_id);
+    const parc=l.parcela_total>1?(l.parcela_num+'/'+l.parcela_total):'';
+    lines.push([fmtData(l.data_pagamento), l.descricao||'', l.tipo||'', gid?grpNome(gid):'', l.conta_id?ctaNome(l.conta_id):'', l.fonte||'', meioNome(l.meio_id)||'', parc, num(svLanc(l)), l.simulado?'Sim':'Não'].map(q).join(';'));
+  });
+  const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='lancamentos_'+new Date().toISOString().slice(0,10)+'.csv'; a.click(); URL.revokeObjectURL(a.href);
+  toast(rows.length+' lançamento(s) exportado(s) ✓');
+}
 function exportCaixaCSV(){
   const t=$('#cgTbl'); if(!t||!t.rows.length){toast('Nada para exportar');return;}
   let csv=[...t.rows].map(r=>[...r.cells].map(c=>'"'+c.textContent.replace(/"/g,'""')+'"').join(';')).join('\r\n');
@@ -2187,6 +2205,7 @@ function wireGestao(){
   ['lfQ','lfFonte','lfGrupo','lfConta','lfMeio','lfTipo','lfIni','lfFim','lfVmin','lfVmax'].forEach(id=>{const el=$('#'+id);if(el)el.addEventListener('input',renderLanc);});
   $('#lfClear').onclick=()=>{['lfQ','lfFonte','lfGrupo','lfConta','lfMeio','lfTipo','lfIni','lfFim','lfVmin','lfVmax'].forEach(id=>{const el=$('#'+id);if(el)el.value='';});renderLanc();};
   $('#btnNovoLanc').onclick=()=>abrirFormLanc();
+  if($('#btnExportLanc'))$('#btnExportLanc').onclick=exportLancCSV;
   $('#btnImport').onclick=()=>$('#fileImp').click();
   $('#fileImp').addEventListener('change',importFile);
   $('#btnDelFut').onclick=excluirFuturos;
