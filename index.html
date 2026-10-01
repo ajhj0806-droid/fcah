@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-09-30b)</title>
+<title>FCAH — Controle Financeiro (v2026-10-01a)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -213,7 +213,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-09-30b · export lançamentos</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-10-01a · edição e importação</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -311,6 +311,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
       <input type="file" id="fileImp" accept=".csv,.xlsx,.xls" style="display:none">
     </div>
     <div class="kpis" id="lancKpis" style="margin-bottom:14px"></div>
+    <div id="lancBulk" style="margin-bottom:8px"></div>
     <div class="tblwrap"><table id="lancTbl"></table></div>
     <div id="lancEmpty"></div>
   </div>
@@ -655,6 +656,9 @@ function simFormProd(p){ p=p||{};
     if(!payload.nome){toast('Informe o nome');return false;} let e2;
     if(p.id)({error:e2}=await SB.from('fcah_sim_produto').update(payload).eq('id',p.id)); else ({error:e2}=await SB.from('fcah_sim_produto').insert(withEmp(payload)));
     if(e2){toast('Erro: '+e2.message);return false;} SIM._cen=null;await loadSim();renderSim();toast('Salvo ✓');return true; });
+  // Item 1: habilita/desabilita os campos conforme o Tipo (Venda × Serviço)
+  const tgl=()=>{ const serv=$('#sp_tipo').value==='Serviço'; [['sp_ent',serv],['sp_pag',serv],['sp_diasc',serv]].forEach(([id,dis])=>{const e=$('#'+id);if(e){e.disabled=dis;e.closest('.fld').style.opacity=dis?'.4':'';}}); const nm=$('#sp_nmeses'); if(nm){nm.disabled=!serv;nm.closest('.fld').style.opacity=!serv?'.4':'';} };
+  if($('#sp_tipo')){ $('#sp_tipo').onchange=tgl; tgl(); }
 }
 function simFormTrib(t){ t=t||{};
   openModal((t.id?'Editar':'Novo')+' tributo',`<div class="form-grid">
@@ -1223,12 +1227,13 @@ function filtroLanc(){
 }
 // valor econômico com sinal: Receita conta positivo, Despesa negativo — respeitando o sinal do próprio valor
 function svLanc(l){ return (l.tipo==='Receita'?1:-1)*(+l.valor||0); }
+let LANC_SEL=new Set(); // ids selecionados p/ ações em massa
 function renderLanc(){
   if(!$('#lancTbl'))return;
   if(!SB){semDB('#lancTbl','#lancEmpty');$('#lancKpis').innerHTML='';return;}
   const _v=id=>(($('#'+id)&&$('#'+id).value)||'').trim();
   const temFiltro=!!(_v('lfQ')||_v('lfGrupo')||_v('lfConta')||_v('lfMeio')||_v('lfTipo')||_v('lfVmin')||_v('lfVmax')||_v('lfIni')||_v('lfFim')||_v('lfFonte'));
-  if(!temFiltro){ $('#lancKpis').innerHTML=''; $('#lancTbl').innerHTML=''; $('#lancEmpty').innerHTML='<div class="empty">🔎 Use os filtros acima para exibir os lançamentos.<br><span class="small muted">Por padrão a lista completa não é mostrada (evita carregar milhares de registros).</span></div>'; return; }
+  if(!temFiltro){ $('#lancKpis').innerHTML=''; $('#lancTbl').innerHTML=''; LANC_SEL.clear(); const bb=$('#lancBulk'); if(bb)bb.innerHTML=''; $('#lancEmpty').innerHTML='<div class="empty">🔎 Use os filtros acima para exibir os lançamentos.<br><span class="small muted">Por padrão a lista completa não é mostrada (evita carregar milhares de registros).</span></div>'; return; }
   const rows=filtroLanc();
   let rec=0,desp=0; rows.forEach(l=>{ if(l.tipo==='Receita')rec+=(+l.valor||0); else desp+=(+l.valor||0); }); // por tipo, respeitando o sinal
   $('#lancKpis').innerHTML=
@@ -1236,18 +1241,48 @@ function renderLanc(){
     kpiCard('Despesas (filtro)','R$ '+fmt.format(desp),null,'#f87171')+
     kpiCard('Saldo (filtro)','R$ '+fmt.format(rec-desp),null,(rec-desp)>=0?'#22c55e':'#ef4444')+
     kpiCard('Lançamentos',fmt.format(rows.length),null,'var(--accent)');
-  if(!rows.length){$('#lancTbl').innerHTML='';$('#lancEmpty').innerHTML='<div class="empty">Nenhum lançamento. Clique em “＋ Novo lançamento” ou importe um arquivo.</div>';return;}
+  if(!rows.length){$('#lancTbl').innerHTML='';$('#lancEmpty').innerHTML='<div class="empty">Nenhum lançamento. Clique em “＋ Novo lançamento” ou importe um arquivo.</div>';renderLancBulk([]);return;}
   $('#lancEmpty').innerHTML='';
-  let h='<thead><tr><th>Pagamento</th><th>Descrição</th><th>Conta</th><th>Fonte</th><th>Meio</th><th>Parc.</th><th>Valor</th><th></th></tr></thead><tbody>';
+  const idsVis=new Set(rows.map(l=>l.id)); LANC_SEL=new Set([...LANC_SEL].filter(id=>idsVis.has(id))); // mantém só seleções visíveis
+  const allSel=rows.length>0 && rows.every(l=>LANC_SEL.has(l.id));
+  let h='<thead><tr><th style="width:26px"><input type="checkbox" id="lancSelAll" '+(allSel?'checked':'')+' title="Selecionar todos"></th><th>Pagamento</th><th>Descrição</th><th>Conta</th><th>Fonte</th><th>Meio</th><th>Parc.</th><th>Valor</th><th></th></tr></thead><tbody>';
   rows.forEach(l=>{
     const sv=svLanc(l); const sig=sv<0?'−':'+'; const cls=sv<0?'neg':'pos';
     const parc=l.parcela_total>1?`${l.parcela_num}/${l.parcela_total}`:'—';
     const contaTxt=l.conta_id?esc(ctaNome(l.conta_id)):'<span class="muted">sem conta</span>';
     const simTag=l.simulado?'<span class="tag" style="background:rgba(245,158,11,.18);color:var(--amber);font-weight:700;margin-right:6px">🧪 SIM</span>':'';
-    h+=`<tr${l.simulado?' style="background:rgba(245,158,11,.06)"':''}><td>${fmtData(l.data_pagamento)}</td><td>${simTag}${esc(l.descricao)||'<span class="muted">—</span>'}</td><td>${contaTxt}</td><td class="muted small">${esc(l.fonte)||'—'}</td><td>${esc(meioNome(l.meio_id))}</td><td>${parc}</td><td class="money ${cls}">${sig} R$ ${fmt.format(Math.abs(l.valor))}</td>`+
+    h+=`<tr${l.simulado?' style="background:rgba(245,158,11,.06)"':''}><td><input type="checkbox" class="lancSel" data-id="${l.id}" ${LANC_SEL.has(l.id)?'checked':''}></td><td>${fmtData(l.data_pagamento)}</td><td>${simTag}${esc(l.descricao)||'<span class="muted">—</span>'}</td><td>${contaTxt}</td><td class="muted small">${esc(l.fonte)||'—'}</td><td>${esc(meioNome(l.meio_id))}</td><td>${parc}</td><td class="money ${cls}">${sig} R$ ${fmt.format(Math.abs(l.valor))}</td>`+
       `<td class="acts"><button class="actbtn" data-act="edit" data-id="${l.id}" title="Editar">✎</button> <button class="actbtn" data-act="dup" data-id="${l.id}" title="Duplicar">⧉</button> <button class="actbtn del" data-act="del" data-id="${l.id}" title="Excluir">✕</button></td></tr>`;
   });
   h+='</tbody>';$('#lancTbl').innerHTML=h;
+  renderLancBulk(rows);
+}
+function renderLancBulk(rows){ const box=$('#lancBulk'); if(!box)return; const n=LANC_SEL.size;
+  if(!n){ box.innerHTML=''; return; }
+  box.innerHTML=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--accent);border-radius:10px;background:rgba(56,189,248,.08)">
+    <b>${n}</b> lançamento(s) selecionado(s)
+    <div class="grow"></div>
+    <button class="btn sec" id="lancBulkConta" title="Trocar a conta de todos os selecionados">🔀 Trocar conta</button>
+    <button class="btn ghost" id="lancBulkDel" style="color:var(--red);border-color:var(--red)" title="Excluir todos os selecionados">🗑 Excluir selecionados</button>
+    <button class="btn ghost" id="lancBulkClear">limpar seleção</button></div>`;
+  $('#lancBulkConta').onclick=trocarContaSelecionados;
+  $('#lancBulkDel').onclick=excluirSelecionados;
+  $('#lancBulkClear').onclick=()=>{ LANC_SEL.clear(); renderLanc(); };
+}
+async function excluirSelecionados(){ const ids=[...LANC_SEL]; if(!ids.length)return;
+  if(!confirm('Excluir os '+ids.length+' lançamento(s) selecionado(s)? Esta ação não pode ser desfeita.'))return;
+  const _e=authEmp(); let q=SB.from('fcah_lancamento_tx').delete().in('id',ids); if(_e!=null)q=q.eq('empresa_id',_e);
+  const {error}=await q; if(error){toast('Erro: '+error.message);return;}
+  LANC_SEL.clear(); await loadLanc(); renderLanc(); renderCaixaGer(); toast(ids.length+' excluído(s) ✓');
+}
+function trocarContaSelecionados(){ const ids=[...LANC_SEL]; if(!ids.length)return;
+  openModal('🔀 Trocar conta de '+ids.length+' lançamento(s)', `<div class="form-grid">
+    <div class="fld full"><label>Nova conta</label><select id="bkConta">${contaOptionsGrouped(G.contas[0]&&G.contas[0].id)}</select></div>
+    <div class="hint full">Todos os ${ids.length} lançamentos selecionados passam para esta conta (o grupo é ajustado junto; o valor e o sinal são mantidos).</div>
+  </div>`, async()=>{ const cid=+$('#bkConta').value||null; const conta=G.contas.find(c=>c.id===cid); if(!conta){toast('Escolha uma conta');return false;}
+    const _e=authEmp(); let q=SB.from('fcah_lancamento_tx').update({conta_id:cid,grupo_id:conta.grupo_id}).in('id',ids); if(_e!=null)q=q.eq('empresa_id',_e);
+    const {error}=await q; if(error){toast('Erro: '+error.message);return false;}
+    LANC_SEL.clear(); await loadGestao(); await loadLanc(); renderLanc(); renderCaixaGer(); toast(ids.length+' lançamento(s) atualizado(s) ✓'); return true; });
 }
 function formLanc(l,isDup){
   l=l||{}; const isEdit=!!l.id && !isDup;
@@ -1255,7 +1290,7 @@ function formLanc(l,isDup){
   return `<div class="form-grid">
     <div class="fld full"><label>Conta</label><select id="fConta">${contaOptionsGrouped(contaSel)}</select></div>
     <div class="fld full"><div class="hint" id="fNat"></div></div>
-    <div class="fld"><label>Valor (R$)</label><input type="number" id="fValor" step="0.01" value="${l.valor!=null?Math.abs(l.valor):''}"></div>
+    <div class="fld"><label>Valor (R$) <span class="muted small">— use − para saída/despesa, + para entrada/receita</span></label><input type="number" id="fValor" step="0.01" value="${l.valor!=null?svLanc(l):''}"></div>
     <div class="fld"><label>Meio de pagamento</label><select id="fMeio">${meioOptions(l.meio_id)}</select></div>
     <div class="fld"><label>Data da compra</label><input type="date" id="fDataC" value="${l.data_compra||''}"></div>
     <div class="fld"><label>Data de pagamento</label><input type="date" id="fDataP" value="${l.data_pagamento||hoje()}"></div>
@@ -1277,9 +1312,10 @@ function abrirFormLanc(l,isDup,fromDrill){
     modoEl.onchange=upd;$('#fN').oninput=upd;$('#fValor').addEventListener('input',upd);upd();}
 }
 async function salvarLanc(l){
-  const valor=parseNum($('#fValor').value);
+  const v=parseNum($('#fValor').value); // valor com sinal digitado pelo usuário (− = saída, + = entrada)
+  const tipo=v<0?'Despesa':'Receita'; const valor=Math.abs(v); // o sinal é gravado como digitado, independente da natureza da conta
   const conta_id=+$('#fConta').value||null, meio_id=+$('#fMeio').value||null;
-  const conta=G.contas.find(x=>x.id===conta_id); const grupo_id=conta?conta.grupo_id:null; const tipo=grpNat(grupo_id);
+  const conta=G.contas.find(x=>x.id===conta_id); const grupo_id=conta?conta.grupo_id:null;
   const data_compra=$('#fDataC').value||null, data_pagamento=$('#fDataP').value||null, descricao=$('#fDesc').value.trim();
   if(!valor||!conta_id){toast('Informe pelo menos o valor e a conta');return false;}
   let learnedMsg='';
@@ -1443,14 +1479,15 @@ function buildTx(det, colOverride){
     const dp=normDate(r[d.dateIdx]);
     const _d1=d.descIdx>=0?String(r[d.descIdx]==null?'':r[d.descIdx]).trim():'';
     const _d2=(d.descIdx2!=null&&d.descIdx2>=0)?String(r[d.descIdx2]==null?'':r[d.descIdx2]).trim():'';
-    const desc=_d1||_d2; // usa a Descrição 2 só quando a Descrição 1 está vazia (espaço)
+    const desc=[_d1,_d2].filter(s=>s&&s.trim()).join(' '); // concatena Descrição 1 + 2 (um espaço entre; ignora o que estiver vazio)
     let valor=0;
     if(d.credIdx>=0||d.debIdx>=0){ const cr=d.credIdx>=0?numVal(r[d.credIdx]):0, db=d.debIdx>=0?numVal(r[d.debIdx]):0; valor=(cr||0)-Math.abs(db||0); }
     else if(d.valorIdx>=0){ valor=numVal(r[d.valorIdx]); }
     if(d.invert) valor=-valor;
     const card=(d.cardIdx!=null&&d.cardIdx>=0)?String(r[d.cardIdx]||'').trim():'';
-    const ehLixo=/^(saldo|total|subtotal|saldo anterior|saldo do dia|saldo final|s a l d o)/i.test(desc);
-    if(dp && desc && valor && Math.abs(valor)>0.0001 && !ehLixo){ out.push({data:dp,desc,valor,card}); }
+    // linhas de resumo (saldo/total/subtotal/soma…) não são lançamentos
+    const ehLixo=/^(saldo|saldos|total|totais|sub.?total|soma|somat[oó]rio|s\s*a\s*l\s*d\s*o)\b/i.test(desc);
+    if(dp && valor && Math.abs(valor)>0.0001 && !ehLixo){ out.push({data:dp,desc,valor,card}); } // importa tudo exceto valor zero/vazio e linhas de resumo
     else if(desc||dp||valor){ ignoradas.push({data:dp,desc,valor}); }
   });
   return {tx:out, ignoradas:ignoradas.length};
@@ -1522,7 +1559,7 @@ function importBankReview(){
   <details class="help" id="impDet" open style="margin-bottom:8px"><summary>Colunas detectadas / opções (ajuste se necessário)</summary><div class="form-grid" style="margin-top:8px">
     <div class="fld"><label>Data da compra</label><select id="ovData">${colOpts(det,o.dateIdx!=null?o.dateIdx:det.dateIdx,false)}</select></div>
     <div class="fld"><label>Descrição</label><select id="ovDesc">${colOpts(det,o.descIdx!=null?o.descIdx:det.descIdx,false)}</select></div>
-    <div class="fld"><label>Descrição — coluna 2 (usada só quando a Descrição 1 estiver vazia)</label><select id="ovDesc2">${colOpts(det,o.descIdx2!=null?o.descIdx2:-1,true)}</select></div>
+    <div class="fld"><label>Descrição — coluna 2 (concatenada à Descrição 1 com um espaço)</label><select id="ovDesc2">${colOpts(det,o.descIdx2!=null?o.descIdx2:-1,true)}</select></div>
     <div class="fld"><label>Valor</label><select id="ovValor">${colOpts(det,o.valorIdx!=null?o.valorIdx:det.valorIdx,false)}</select></div>
     <div class="fld"><label>&nbsp;</label><label style="display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid var(--amber);border-radius:8px;background:rgba(245,158,11,.10);font-weight:600;cursor:pointer"><input type="checkbox" id="ovInvert" ${o.invert?'checked':''} style="width:16px;height:16px"> ⇅ Inverter sinais dos valores (+ ↔ −)</label></div>
     <div class="fld full"><label style="display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid var(--accent);border-radius:8px;background:rgba(59,130,246,.10);font-weight:600;cursor:pointer"><input type="checkbox" id="impCartao" ${IMPB.card&&IMPB.card.on?'checked':''} style="width:16px;height:16px"> 💳 É fatura de Cartão de Crédito?</label></div>
@@ -2211,6 +2248,7 @@ function wireGestao(){
   $('#btnDelFut').onclick=excluirFuturos;
   $('#btnDelImport')&&($('#btnDelImport').onclick=excluirImportacao);
   $('#lancTbl').addEventListener('click',lancTblClick);
+  $('#lancTbl').addEventListener('change',e=>{ if(e.target.id==='lancSelAll'){ const rows=filtroLanc(); rows.forEach(l=>{ if(e.target.checked)LANC_SEL.add(l.id); else LANC_SEL.delete(l.id); }); renderLanc(); } else if(e.target.classList&&e.target.classList.contains('lancSel')){ const id=+e.target.dataset.id; if(e.target.checked)LANC_SEL.add(id); else LANC_SEL.delete(id); renderLanc(); } });
   $('#cgAno').onchange=renderCaixaGer;$('#cgModo').onchange=renderCaixaGer;$('#cgTipo').onchange=renderCaixaGer;$('#cgExport').onclick=exportCaixaCSV;
   if($('#cgMes'))$('#cgMes').onchange=renderCaixaGer;
   if($('#cgPrev'))$('#cgPrev').onclick=()=>cgShiftMes(-1); if($('#cgNext'))$('#cgNext').onclick=()=>cgShiftMes(1);
