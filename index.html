@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-01a)</title>
+<title>FCAH — Controle Financeiro (v2026-10-01b)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -213,7 +213,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div>
       <h1>Sistema de Controle Financeiro</h1>
       <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-10-01a · edição e importação</span></div>
+      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-10-01b · seleção no caixa</span></div>
     </div>
     <div class="grow"></div>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
@@ -1290,7 +1290,7 @@ function formLanc(l,isDup){
   return `<div class="form-grid">
     <div class="fld full"><label>Conta</label><select id="fConta">${contaOptionsGrouped(contaSel)}</select></div>
     <div class="fld full"><div class="hint" id="fNat"></div></div>
-    <div class="fld"><label>Valor (R$) <span class="muted small">— use − para saída/despesa, + para entrada/receita</span></label><input type="number" id="fValor" step="0.01" value="${l.valor!=null?svLanc(l):''}"></div>
+    <div class="fld"><label>Valor (R$) ${isEdit?'<span class="muted small">— use − p/ saída, + p/ entrada (sinal mantido)</span>':'<span class="muted small">— o sinal segue a natureza da conta</span>'}</label><input type="number" id="fValor" step="0.01" value="${l.valor!=null?(isEdit?svLanc(l):Math.abs(l.valor)):''}"></div>
     <div class="fld"><label>Meio de pagamento</label><select id="fMeio">${meioOptions(l.meio_id)}</select></div>
     <div class="fld"><label>Data da compra</label><input type="date" id="fDataC" value="${l.data_compra||''}"></div>
     <div class="fld"><label>Data de pagamento</label><input type="date" id="fDataP" value="${l.data_pagamento||hoje()}"></div>
@@ -1312,10 +1312,13 @@ function abrirFormLanc(l,isDup,fromDrill){
     modoEl.onchange=upd;$('#fN').oninput=upd;$('#fValor').addEventListener('input',upd);upd();}
 }
 async function salvarLanc(l){
-  const v=parseNum($('#fValor').value); // valor com sinal digitado pelo usuário (− = saída, + = entrada)
-  const tipo=v<0?'Despesa':'Receita'; const valor=Math.abs(v); // o sinal é gravado como digitado, independente da natureza da conta
+  const v=parseNum($('#fValor').value);
   const conta_id=+$('#fConta').value||null, meio_id=+$('#fMeio').value||null;
   const conta=G.contas.find(x=>x.id===conta_id); const grupo_id=conta?conta.grupo_id:null;
+  const isEdit=!!(l&&l.id);
+  // EDIÇÃO: respeita o sinal digitado. NOVO: o sinal segue a natureza da conta.
+  const tipo = isEdit ? (v<0?'Despesa':'Receita') : grpNat(grupo_id);
+  const valor=Math.abs(v);
   const data_compra=$('#fDataC').value||null, data_pagamento=$('#fDataP').value||null, descricao=$('#fDesc').value.trim();
   if(!valor||!conta_id){toast('Informe pelo menos o valor e a conta');return false;}
   let learnedMsg='';
@@ -1977,7 +1980,7 @@ function exportCaixaCSV(){
   a.href=URL.createObjectURL(blob); a.download='caixa_gerencial_'+($('#cgAno').value)+'.csv'; a.click(); URL.revokeObjectURL(a.href); toast('CSV gerado');
 }
 /* ---- DRILL-DOWN do caixa: lançamentos de uma célula ---- */
-let DRILL=null; let DRILL_SORT={key:'data',dir:1};
+let DRILL=null; let DRILL_SORT={key:'data',dir:1}; let DRILL_SEL=new Set();
 function drillFilter(scope,id,mes){
   const win=cgWindow(); const alvo=mes==='all'?null:win.months[+mes];
   const dentroJanela=(Y,M)=>win.months.some(mm=>mm.y===Y&&mm.m===M);
@@ -1998,18 +2001,19 @@ function abrirDrill(scope,id,mes){
   const sk=DRILL_SORT.key, sd=DRILL_SORT.dir;
   rows.sort((a,b)=>{ let r; if(sk==='desc') r=String(a.descricao||'').localeCompare(String(b.descricao||''),'pt',{sensitivity:'base'}); else if(sk==='valor') r=sgv(a)-sgv(b); else r=String(a.data_pagamento).localeCompare(String(b.data_pagamento)); return r*sd; });
   const soma=rows.reduce((s,l)=>s+sgv(l),0);
+  const idsVis=new Set(rows.map(l=>l.id)); DRILL_SEL=new Set([...DRILL_SEL].filter(x=>idsVis.has(x))); const allSel=rows.length>0&&rows.every(l=>DRILL_SEL.has(l.id));
   const titulo = scope==='grupo'?('Grupo: '+grpNome(id)) : (scope==='conta'?('Conta: '+ctaNome(id)) : (scope==='semconta'?'Lançamentos sem conta':(scope==='semgrupo'?'Contas sem grupo':'Todos os grupos')));
   const per = mes==='all'?(win.months[0].label+' – '+win.months[11].label):(alvo?(MESES[alvo.m]+'/'+String(alvo.y).slice(2)):'');
   const somaCls=soma<0?'neg':'pos', somaSig=soma<0?'−':'+';
-  let body=`<div class="small muted" style="margin-bottom:10px">${esc(titulo)} · <b>${per}</b> · ${rows.length} lançamento(s) · soma <b class="money ${somaCls}">${somaSig} R$ ${fmt.format(Math.abs(soma))}</b></div>`;
+  let body=`<div class="small muted" style="margin-bottom:10px">${esc(titulo)} · <b>${per}</b> · ${rows.length} lançamento(s) · soma <b class="money ${somaCls}">${somaSig} R$ ${fmt.format(Math.abs(soma))}</b></div><div id="drillBulk" style="margin-bottom:8px"></div>`;
   if(!rows.length){ body+='<div class="empty">Nenhum lançamento neste período.</div>'; }
   else{
     const arw=k=>DRILL_SORT.key===k?(DRILL_SORT.dir>0?' ▲':' ▼'):' ↕';
-    body+=`<div class="tblwrap"><table id="drillTbl"><thead><tr><th class="dsort" data-sortkey="data" style="cursor:pointer" title="Ordenar por data">Data<span class="muted">${arw('data')}</span></th><th class="dsort" data-sortkey="desc" style="cursor:pointer" title="Ordenar por descrição">Descrição<span class="muted">${arw('desc')}</span></th><th>Conta</th><th>Meio</th><th class="dsort" data-sortkey="valor" style="cursor:pointer" title="Ordenar por valor">Valor<span class="muted">${arw('valor')}</span></th><th></th></tr></thead><tbody>`;
+    body+=`<div class="tblwrap"><table id="drillTbl"><thead><tr><th style="width:24px"><input type="checkbox" id="drillSelAll" ${allSel?'checked':''} title="Selecionar todos"></th><th class="dsort" data-sortkey="data" style="cursor:pointer" title="Ordenar por data">Data<span class="muted">${arw('data')}</span></th><th class="dsort" data-sortkey="desc" style="cursor:pointer" title="Ordenar por descrição">Descrição<span class="muted">${arw('desc')}</span></th><th>Conta</th><th>Meio</th><th class="dsort" data-sortkey="valor" style="cursor:pointer" title="Ordenar por valor">Valor<span class="muted">${arw('valor')}</span></th><th></th></tr></thead><tbody>`;
     rows.forEach(l=>{ const sv=sgv(l); const sig=sv<0?'−':'+',cls=sv<0?'neg':'pos'; const parc=l.parcela_total>1?` <span class="muted">${l.parcela_num}/${l.parcela_total}</span>`:'';
-      body+=`<tr${l.simulado?' style="background:rgba(245,158,11,.06)"':''}><td>${fmtData(l.data_pagamento)}</td><td>${l.simulado?'<span class="tag" style="background:rgba(245,158,11,.18);color:var(--amber);font-weight:700;margin-right:6px">🧪 SIM</span>':''}${esc(l.descricao)||'—'}${parc}</td><td>${esc(ctaNome(l.conta_id))}</td><td>${esc(meioNome(l.meio_id))}</td><td class="money ${cls}">${sig} R$ ${fmt.format(Math.abs(l.valor))}</td>`+
+      body+=`<tr${l.simulado?' style="background:rgba(245,158,11,.06)"':''}><td><input type="checkbox" class="drillSel" data-id="${l.id}" ${DRILL_SEL.has(l.id)?'checked':''}></td><td>${fmtData(l.data_pagamento)}</td><td>${l.simulado?'<span class="tag" style="background:rgba(245,158,11,.18);color:var(--amber);font-weight:700;margin-right:6px">🧪 SIM</span>':''}${esc(l.descricao)||'—'}${parc}</td><td>${esc(ctaNome(l.conta_id))}</td><td>${esc(meioNome(l.meio_id))}</td><td class="money ${cls}">${sig} R$ ${fmt.format(Math.abs(l.valor))}</td>`+
         `<td class="acts"><button class="actbtn" data-dact="edit" data-id="${l.id}" title="Editar">✎</button> <button class="actbtn" data-dact="dup" data-id="${l.id}" title="Duplicar">⧉</button> <button class="actbtn" data-dact="rep" data-id="${l.id}" title="Replicar para meses seguintes">⤵</button> <button class="actbtn del" data-dact="del" data-id="${l.id}" title="Excluir">✕</button></td></tr>`; });
-    body+=`</tbody><tfoot><tr class="tot"><td colspan="4" style="text-align:right">Soma</td><td class="money ${somaCls}">${somaSig} R$ ${fmt.format(Math.abs(soma))}</td><td></td></tr></tfoot></table></div>`;
+    body+=`</tbody><tfoot><tr class="tot"><td colspan="5" style="text-align:right">Soma</td><td class="money ${somaCls}">${somaSig} R$ ${fmt.format(Math.abs(soma))}</td><td></td></tr></tfoot></table></div>`;
   }
   const pre = scope==='conta'?{conta_id:id,data_pagamento:(alvo?(alvo.y+'-'+String(alvo.m+1).padStart(2,'0')+'-05'):hoje())}:{data_pagamento:hoje()};
   body+='<div style="margin-top:12px"><button class="btn" id="drillNovo">＋ Novo lançamento aqui</button></div>';
@@ -2017,8 +2021,32 @@ function abrirDrill(scope,id,mes){
   const mw=document.querySelector('#modal .modal'); if(mw)mw.classList.add('wide');
   $('#modalCancel').textContent='Fechar';
   const dt=$('#drillTbl'); if(dt){ dt.addEventListener('click',drillTblClick);
-    dt.querySelectorAll('th.dsort').forEach(th=>th.addEventListener('click',()=>{ const k=th.dataset.sortkey; if(DRILL_SORT.key===k)DRILL_SORT.dir*=-1; else {DRILL_SORT.key=k;DRILL_SORT.dir=1;} abrirDrill(scope,id,mes); })); }
+    dt.querySelectorAll('th.dsort').forEach(th=>th.addEventListener('click',()=>{ const k=th.dataset.sortkey; if(DRILL_SORT.key===k)DRILL_SORT.dir*=-1; else {DRILL_SORT.key=k;DRILL_SORT.dir=1;} abrirDrill(scope,id,mes); }));
+    dt.addEventListener('change',e=>{ if(e.target.id==='drillSelAll'){ rows.forEach(l=>{ if(e.target.checked)DRILL_SEL.add(l.id); else DRILL_SEL.delete(l.id); }); abrirDrill(scope,id,mes); } else if(e.target.classList&&e.target.classList.contains('drillSel')){ const did=+e.target.dataset.id; if(e.target.checked)DRILL_SEL.add(did); else DRILL_SEL.delete(did); renderDrillBulk(); } }); }
+  renderDrillBulk();
   const nv=$('#drillNovo'); if(nv) nv.onclick=()=>abrirFormLanc(pre,false,true);
+}
+function renderDrillBulk(){ const box=$('#drillBulk'); if(!box)return; const n=DRILL_SEL.size;
+  if(!n){ box.innerHTML=''; return; }
+  box.innerHTML=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--accent);border-radius:10px;background:rgba(56,189,248,.08)"><b>${n}</b> selecionado(s)<div class="grow"></div><button class="btn sec" id="drillBulkConta">🔀 Trocar conta</button><button class="btn ghost" id="drillBulkDel" style="color:var(--red);border-color:var(--red)">🗑 Excluir selecionados</button><button class="btn ghost" id="drillBulkClear">limpar</button></div>`;
+  $('#drillBulkConta').onclick=trocarContaSelDrill;
+  $('#drillBulkDel').onclick=excluirSelDrill;
+  $('#drillBulkClear').onclick=()=>{ DRILL_SEL.clear(); renderDrillBulk(); const a=$('#drillSelAll'); if(a)a.checked=false; document.querySelectorAll('#drillTbl .drillSel').forEach(c=>c.checked=false); };
+}
+async function excluirSelDrill(){ const ids=[...DRILL_SEL]; if(!ids.length)return;
+  if(!confirm('Excluir os '+ids.length+' lançamento(s) selecionado(s)? Esta ação não pode ser desfeita.'))return;
+  const _e=authEmp(); let q=SB.from('fcah_lancamento_tx').delete().in('id',ids); if(_e!=null)q=q.eq('empresa_id',_e);
+  const {error}=await q; if(error){toast('Erro: '+error.message);return;}
+  DRILL_SEL.clear(); await loadLanc(); renderLanc(); renderCaixaGer(); reabrirDrill(); toast(ids.length+' excluído(s) ✓');
+}
+function trocarContaSelDrill(){ const ids=[...DRILL_SEL]; if(!ids.length)return;
+  openModal('🔀 Trocar conta de '+ids.length+' lançamento(s)', `<div class="form-grid">
+    <div class="fld full"><label>Nova conta</label><select id="bkConta2">${contaOptionsGrouped(G.contas[0]&&G.contas[0].id)}</select></div>
+    <div class="hint full">Os ${ids.length} lançamentos selecionados passam para esta conta (grupo ajustado junto; valor e sinal mantidos).</div>
+  </div>`, async()=>{ const cid=+$('#bkConta2').value||null; const conta=G.contas.find(c=>c.id===cid); if(!conta){toast('Escolha uma conta');return false;}
+    const _e=authEmp(); let q=SB.from('fcah_lancamento_tx').update({conta_id:cid,grupo_id:conta.grupo_id}).in('id',ids); if(_e!=null)q=q.eq('empresa_id',_e);
+    const {error}=await q; if(error){toast('Erro: '+error.message);return false;}
+    DRILL_SEL.clear(); await loadGestao(); await loadLanc(); renderLanc(); renderCaixaGer(); toast(ids.length+' lançamento(s) atualizado(s) ✓'); setTimeout(reabrirDrill,0); return true; });
 }
 function reabrirDrill(){ if(DRILL) abrirDrill(DRILL.scope,DRILL.id,DRILL.mes); }
 function drillTblClick(e){ const b=e.target.closest('button[data-dact]'); if(!b)return; const id=+b.dataset.id,l=G.lanc.find(x=>x.id===id); if(!l)return;
