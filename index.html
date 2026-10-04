@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-04a)</title>
+<title>FCAH — Controle Financeiro (v2026-10-04b)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -275,7 +275,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <a data-erp="/compras">🧾 Ordens de compra</a>
     <a data-erp="__cfg" style="color:var(--nav-muted);font-size:12px">⚙️ URL do ERP…</a>
   </div>
-  <div class="nav-foot" id="navFoot">v2026-10-04a · base FCAH</div>
+  <div class="nav-foot" id="navFoot">v2026-10-04b · base FCAH</div>
 </nav>
 <div class="main">
   <header class="topbar">
@@ -512,7 +512,8 @@ const erpBase=()=>{ try{const u=localStorage.getItem('fcah-erp-url'); if(u)retur
   return '/erp'; };
 function abrirErp(rota,a){ $$('.view').forEach(s=>s.classList.remove('active')); $('#v-erp').classList.add('active');
   const url=erpBase()+rota; const f=$('#erpFrame'); if(f)f.src=url; marcarMenu(a);
-  const m=$('#erpMsg'); if(m){ m.hidden=false; m.innerHTML='ERP em <b>'+esc(erpBase())+'</b> — se não carregar, verifique se o SGERP está no ar (local: inicie o SGERP). <a href="#" id="erpCfgLink">trocar URL</a>'; const cl=$('#erpCfgLink'); if(cl)cl.onclick=ev=>{ev.preventDefault();cfgErp();}; }
+  const m=$('#erpMsg'); const _devErp=erpBase().startsWith('http://localhost');
+  if(m){ if(_devErp){ m.hidden=false; m.innerHTML='ERP em <b>'+esc(erpBase())+'</b> — se não carregar, inicie o servidor do SGERP. <a href="#" id="erpCfgLink">trocar URL</a>'; const cl=$('#erpCfgLink'); if(cl)cl.onclick=ev=>{ev.preventDefault();cfgErp();}; } else { m.hidden=true; } }
   $('#sidebar').classList.remove('open'); }
 function cfgErp(){ let cur=''; try{cur=localStorage.getItem('fcah-erp-url')||'http://localhost:5190';}catch(_){cur='http://localhost:5190';}
   const v=prompt('URL base do ERP (SGERP). Ex.: http://localhost:5190 (local) ou o endereço publicado.', cur);
