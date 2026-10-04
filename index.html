@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-04g)</title>
+<title>FCAH — Controle Financeiro (v2026-10-04h)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -60,6 +60,7 @@ a{color:var(--accent)}
 .nav-group.aberto a{padding-left:28px}
 .nav a{display:flex;align-items:center;gap:10px;padding:6px 18px;color:var(--nav-ink);text-decoration:none;font-size:13.5px;border-left:3px solid transparent;cursor:pointer}
 .nav a svg{width:16px;height:16px;flex:none;opacity:.8}
+.nav-group:not(.aberto) a{display:none}
 .nav a:hover{background:#ffffff0a}
 .nav a.active{background:#ffffff12;border-left-color:#2CCB8F;color:#fff}
 .nav-foot{margin-top:auto;padding:14px 18px 0;font-size:11.5px;color:var(--nav-muted)}
@@ -237,7 +238,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
 </style>
 <div id="authGate" hidden style="position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:20px">
   <div class="panel" style="width:380px;max-width:94vw">
-    <div style="text-align:center;margin-bottom:16px"><div class="logo" style="margin:0 auto 8px">FC</div><div style="font-size:20px;font-weight:800">FCAH · Financeiro</div><div class="muted small" id="agHead">Acesse com sua conta</div></div>
+    <div style="text-align:center;margin-bottom:16px"><div class="logo" style="margin:0 auto 8px">SG</div><div style="font-size:20px;font-weight:800">SGERP</div><div class="muted small" id="agHead">Acesse com sua conta</div></div>
     <div id="agLogin">
       <div class="fld"><label>E-mail</label><input type="email" id="agEmail" autocomplete="username" style="width:100%"></div>
       <div class="fld" style="margin-top:10px"><label>Senha</label><input type="password" id="agSenha" autocomplete="current-password" style="width:100%"></div>
@@ -293,7 +294,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <button type="button" class="nav-topico"><span>Cadastros</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
     <a data-v="cad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20.5c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5M16.5 11a3 3 0 0 0 0-6M21.5 20.5c0-2.8-1.7-5.2-4.2-6.2"/></svg><span>Cadastros e usuários</span></a>
   </div>
-  <div class="nav-foot" id="navFoot">v2026-10-04g · base FCAH</div>
+  <div class="nav-foot" id="navFoot">v2026-10-04h · base FCAH</div>
 </nav>
 <main class="content">
 
