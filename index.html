@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-04e)</title>
+<title>FCAH — Controle Financeiro (v2026-10-04f)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -43,12 +43,13 @@ body{background:var(--bg);color:var(--txt);font-family:var(--f-body);font-size:1
 h1,h2,h3,.brand b{font-family:var(--f-display)}
 a{color:var(--accent)}
 /* ===== Shell no padrão SGERP: menu lateral + topbar ===== */
-.app{display:grid;grid-template-columns:252px minmax(0,1fr);min-height:100vh}
-.nav{background:var(--nav);color:var(--nav-ink);position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;padding-block:14px 18px}
-.nav .brand{display:flex;align-items:center;gap:10px;padding:4px 18px 16px;flex-wrap:nowrap}
+.app{display:flex;flex-direction:column;min-height:100vh}
+.body{display:grid;grid-template-columns:252px minmax(0,1fr);flex:1;min-height:0}
+.nav{background:var(--nav);color:var(--nav-ink);position:sticky;top:58px;height:calc(100vh - 58px);overflow-y:auto;display:flex;flex-direction:column;padding-block:14px 18px}
+.topbar .brand{display:flex;align-items:center;gap:10px;background:var(--nav);color:var(--nav-ink);align-self:stretch;padding:0 20px;min-width:214px}
 .brand-mark{width:30px;height:30px;border-radius:7px;background:#12A270;display:grid;place-items:center;color:#04150E;font:800 13px/1 var(--f-display)}
-.nav .brand b{font:700 16px/1.1 var(--f-display);color:#EAF4EF;display:block}
-.nav .brand small{font-size:11px;color:var(--nav-muted);letter-spacing:.08em;text-transform:uppercase}
+.topbar .brand b{font:700 16px/1.1 var(--f-display);color:#EAF4EF;display:block}
+.topbar .brand small{font-size:11px;color:var(--nav-muted);letter-spacing:.08em;text-transform:uppercase;display:block}
 .nav-group{padding:0}
 .nav-topico{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:0;cursor:pointer;padding:9px 18px;color:var(--nav-ink);font:600 12px/1.4 var(--f-body);letter-spacing:.1em;text-transform:uppercase;border-left:3px solid transparent;text-align:left}
 .nav-topico:hover{background:#ffffff0a}
@@ -62,16 +63,17 @@ a{color:var(--accent)}
 .nav a.active{background:#ffffff12;border-left-color:#2CCB8F;color:#fff}
 .nav-foot{margin-top:auto;padding:14px 18px 0;font-size:11.5px;color:var(--nav-muted)}
 .main{min-width:0;display:flex;flex-direction:column}
-.topbar{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:10px 24px;min-height:58px}
+.topbar{position:sticky;top:0;z-index:30;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 24px 0 0;min-height:58px}
 /* Alternador de módulos (Financeiro | Materiais) no topo */
 .modswitch{display:inline-flex;margin-inline:auto;background:rgba(127,127,127,.14);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
 .modswitch button{border:0;background:transparent;color:inherit;font:650 13px var(--f-body,inherit);padding:6px 16px;border-radius:7px;cursor:pointer;opacity:.72}
 .modswitch button.active{background:var(--accent);color:#fff;opacity:1}
 /* Módulo Materiais (ERP em tela cheia): some só o menu lateral do FCAH; o topo (com o alternador) permanece */
-body.erp-full .nav{display:none}
-body.erp-full .app{grid-template-columns:minmax(0,1fr)}
+body.erp-full .nav,body.nav-collapsed .nav{display:none}
+body.erp-full .body,body.nav-collapsed .body{grid-template-columns:minmax(0,1fr)}
 body.erp-full .menu-btn{display:none}
-.menu-btn{display:none}
+body.nav-collapsed .content,body.erp-full .content{max-width:none}
+.menu-btn{display:grid}
 .top-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
 .icon-btn,.iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:8px;height:36px;min-width:36px;display:grid;place-items:center;cursor:pointer;color:var(--txt2);font-size:15px}
 .icon-btn:hover,.iconbtn:hover{border-color:var(--txt3)}
@@ -88,11 +90,12 @@ body.erp-full .menu-btn{display:none}
 .view.active{display:block}
 @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @media (max-width:900px){
-  .app{grid-template-columns:minmax(0,1fr)}
-  .nav{position:fixed;left:0;top:0;bottom:0;width:272px;z-index:45;transform:translateX(-102%);transition:transform .2s}
+  .body{grid-template-columns:minmax(0,1fr)}
+  .nav{position:fixed;left:0;top:58px;bottom:0;width:272px;z-index:45;transform:translateX(-102%);transition:transform .2s}
   .nav.open{transform:none}
-  .menu-btn{display:grid}
   .user-info{display:none}
+  .topbar .brand{min-width:0}
+  .topbar .brand small{display:none}
 }
 @media (max-width:560px){ .topbar{padding:10px 16px} .content{padding:16px 16px 40px} }
 .grid{display:grid;gap:14px}
@@ -258,8 +261,24 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
   </div>
 </div>
 <div class="app">
+<header class="topbar">
+  <div class="brand"><div class="brand-mark">SG</div><div><b>SGERP</b><small id="modLabel">FINANCEIRO</small></div></div>
+  <button class="icon-btn menu-btn" id="menuBtn" aria-label="Recolher menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt" class="small">verificando…</span></div>
+  <select id="empSwitch" class="field" title="Empresa em visualização (somente superadmin)" hidden style="height:34px"></select>
+  <div class="modswitch" role="tablist">
+    <button type="button" data-mod="fin" class="active">Financeiro</button>
+    <button type="button" data-mod="mat">Materiais</button>
+  </div>
+  <div class="top-actions">
+    <button class="icon-btn" id="btnTrocarSenha" hidden title="Trocar a minha senha">🔑</button>
+    <button class="icon-btn" id="themebtn" title="Alternar tema">◑</button>
+    <div class="user-info" id="userBadge" hidden></div>
+    <button class="btn sm" id="btnLogout" hidden>Sair</button>
+  </div>
+</header>
+<div class="body">
 <nav class="nav" id="sidebar" aria-label="Menu principal">
-  <div class="brand"><div class="brand-mark">SG</div><div><b>SGERP</b><small>Financeiro</small></div></div>
   <div class="nav-group aberto" data-g="fin">
     <button type="button" class="nav-topico atual"><span>Financeiro</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
     <a data-v="lanc" class="active">Lançamentos</a>
@@ -274,25 +293,9 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <button type="button" class="nav-topico"><span>Cadastros</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
     <a data-v="cad">Cadastros e usuários</a>
   </div>
-  <div class="nav-foot" id="navFoot">v2026-10-04e · base FCAH</div>
+  <div class="nav-foot" id="navFoot">v2026-10-04f · base FCAH</div>
 </nav>
-<div class="main">
-  <header class="topbar">
-    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Abrir menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-    <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt" class="small">verificando…</span></div>
-    <select id="empSwitch" class="field" title="Empresa em visualização (somente superadmin)" hidden style="height:34px"></select>
-    <div class="modswitch" role="tablist">
-      <button type="button" data-mod="fin" class="active">Financeiro</button>
-      <button type="button" data-mod="mat">Materiais</button>
-    </div>
-    <div class="top-actions">
-      <button class="icon-btn" id="btnTrocarSenha" hidden title="Trocar a minha senha">🔑</button>
-      <button class="icon-btn" id="themebtn" title="Alternar tema">◑</button>
-      <div class="user-info" id="userBadge" hidden></div>
-      <button class="btn sm" id="btnLogout" hidden>Sair</button>
-    </div>
-  </header>
-  <main class="content">
+<main class="content">
 
 <!-- ============ ERP – MATERIAIS (embutido) ============ -->
 <section class="view" id="v-erp" style="margin:-22px -24px -48px">
@@ -502,7 +505,7 @@ $('#themebtn').onclick=()=>{const cur=document.documentElement.getAttribute('dat
 initTheme();
 
 /* menu lateral (padrão SGERP): troca de view + grupos colapsáveis + botão mobile */
-function setMod(m){ $$('.modswitch button[data-mod]').forEach(b=>b.classList.toggle('active', b.dataset.mod===m)); }
+function setMod(m){ $$('.modswitch button[data-mod]').forEach(b=>b.classList.toggle('active', b.dataset.mod===m)); const l=$('#modLabel'); if(l)l.textContent=(m==='mat'?'MATERIAIS':'FINANCEIRO'); }
 function switchView(v){ document.body.classList.remove('erp-full'); setMod('fin'); $$('#sidebar a[data-v]').forEach(x=>x.classList.toggle('active',x.dataset.v===v)); $$('.view').forEach(s=>s.classList.remove('active')); const el=$('#v-'+v); if(el)el.classList.add('active'); renderAll(); }
 function marcarMenu(a){ $$('#sidebar a').forEach(x=>x.classList.remove('active')); if(a)a.classList.add('active');
   $$('#sidebar .nav-group').forEach(x=>x.classList.remove('aberto')); $$('#sidebar .nav-topico').forEach(t=>t.classList.remove('atual'));
@@ -528,7 +531,7 @@ $('#sidebar').addEventListener('click',e=>{
   const a=e.target.closest('a[data-v]');
   if(a){ switchView(a.dataset.v); marcarMenu(a); $('#sidebar').classList.remove('open'); }
 });
-if($('#menuBtn'))$('#menuBtn').onclick=()=>$('#sidebar').classList.toggle('open');
+if($('#menuBtn'))$('#menuBtn').onclick=()=>{ if(window.innerWidth<=900) $('#sidebar').classList.toggle('open'); else document.body.classList.toggle('nav-collapsed'); };
 
 /* ---- controles do simulador ---- */
 const CTRLS=[
