@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-04c)</title>
+<title>FCAH — Controle Financeiro (v2026-10-04d)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -273,15 +273,9 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <a data-v="cad">⚙️ Cadastros e usuários</a>
   </div>
   <div class="nav-group" data-g="erp">
-    <button type="button" class="nav-topico"><span>ERP – Materiais</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
-    <a data-erp="/">🏠 Painel executivo</a>
-    <a data-erp="/produtos">🏷️ Produtos</a>
-    <a data-erp="/vendas">🛒 Vendas</a>
-    <a data-erp="/estoque">📦 Estoque</a>
-    <a data-erp="/compras">🧾 Ordens de compra</a>
-    <a data-erp="__cfg" style="color:var(--nav-muted);font-size:12px">⚙️ URL do ERP…</a>
+    <a class="nav-topico" data-erp="/" style="cursor:pointer"><span>📦 Materiais</span></a>
   </div>
-  <div class="nav-foot" id="navFoot">v2026-10-04c · base FCAH</div>
+  <div class="nav-foot" id="navFoot">v2026-10-04d · base FCAH</div>
 </nav>
 <div class="main">
   <header class="topbar">
@@ -528,7 +522,7 @@ function cfgErp(){ let cur=''; try{cur=localStorage.getItem('fcah-erp-url')||'ht
 { const _bv=$('#erpVoltar'); if(_bv)_bv.onclick=()=>{ switchView('lanc'); marcarMenu($('#sidebar a[data-v="lanc"]')); }; }
 $('#sidebar').addEventListener('click',e=>{
   const top=e.target.closest('.nav-topico');
-  if(top){ const g=top.closest('.nav-group'); const open=g.classList.contains('aberto'); $$('#sidebar .nav-group').forEach(x=>x.classList.remove('aberto')); if(!open)g.classList.add('aberto'); return; }
+  if(top){ if(top.dataset.erp){ e.preventDefault(); abrirErp(top.dataset.erp,top); $('#sidebar').classList.remove('open'); return; } const g=top.closest('.nav-group'); const open=g.classList.contains('aberto'); $$('#sidebar .nav-group').forEach(x=>x.classList.remove('aberto')); if(!open)g.classList.add('aberto'); return; }
   const er=e.target.closest('a[data-erp]');
   if(er){ e.preventDefault(); if(er.dataset.erp==='__cfg'){ cfgErp(); return; } abrirErp(er.dataset.erp,er); return; }
   const a=e.target.closest('a[data-v]');
