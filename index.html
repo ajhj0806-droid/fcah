@@ -4,46 +4,89 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-01b)</title>
+<title>FCAH — Controle Financeiro (v2026-10-04a)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500..800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<script>try{const t=localStorage.getItem('fcah-theme');if(t)document.documentElement.dataset.theme=t;}catch(_){}</script>
 <style>
+/* Design System portado do SGERP (claro por padrão; verde) */
 :root{
-  --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2b3444; --line2:#39435a;
-  --txt:#e6edf3; --txt2:#9aa7b8; --txt3:#6b7688;
-  --accent:#3b82f6; --accent2:#60a5fa; --green:#22c55e; --red:#ef4444; --amber:#f59e0b;
-  --pos:#22c55e; --neg:#f87171;
-  --chip:#232c3b;
-  --radius:12px; --shadow:0 4px 20px rgba(0,0,0,.25);
+  --bg:#F2F5F3; --panel:#FFFFFF; --panel2:#F7FAF8; --line:#DCE4E0; --line2:#E9EFEC;
+  --txt:#13201A; --txt2:#5A6A62; --txt3:#8A9992;
+  --accent:#0C7A55; --accent2:#095E42; --green:#1C7F4E; --red:#B8392A; --amber:#A8650A;
+  --pos:#1C7F4E; --neg:#B8392A; --chip:#EDF1EF;
+  --nav:#0F231B; --nav-ink:#C9DCD3; --nav-muted:#7F9A8E;
+  --radius:10px; --shadow:0 1px 2px rgba(16,35,27,.06),0 4px 16px rgba(16,35,27,.06);
+  --f-display:"Archivo","Segoe UI",system-ui,sans-serif; --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
 }
-:root[data-theme="light"]{
-  --bg:#f4f6fa; --panel:#ffffff; --panel2:#f7f9fc; --line:#e3e8ef; --line2:#d2d9e3;
-  --txt:#0f172a; --txt2:#475569; --txt3:#8a97a8; --chip:#eef2f7; --shadow:0 4px 18px rgba(15,23,42,.08);
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#0C1310; --panel:#131C18; --panel2:#17221D; --line:#26342D; --line2:#1E2A24;
+  --txt:#E2EBE6; --txt2:#97A99F; --txt3:#6F8278;
+  --accent:#3BBE8C; --accent2:#63D3A6; --green:#5CCB8E; --red:#F07F6B; --amber:#E3A447; --pos:#5CCB8E; --neg:#F07F6B; --chip:#1D2823;
+  --nav:#08100C; --nav-ink:#C4D6CD; --nav-muted:#6F887C; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
+} }
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0C1310; --panel:#131C18; --panel2:#17221D; --line:#26342D; --line2:#1E2A24;
+  --txt:#E2EBE6; --txt2:#97A99F; --txt3:#6F8278;
+  --accent:#3BBE8C; --accent2:#63D3A6; --green:#5CCB8E; --red:#F07F6B; --amber:#E3A447; --pos:#5CCB8E; --neg:#F07F6B; --chip:#1D2823;
+  --nav:#08100C; --nav-ink:#C4D6CD; --nav-muted:#6F887C; --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
-body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.45}
-a{color:var(--accent2)}
-.app{max-width:1320px;margin:0 auto;padding:0 18px 60px}
-header.top{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,var(--bg) 70%,transparent);padding:14px 0 6px;backdrop-filter:blur(4px)}
-.brand{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:16px;letter-spacing:-.5px}
-.brand h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.3px}
-.brand .sub{font-size:12px;color:var(--txt2);margin-top:1px}
+body{background:var(--bg);color:var(--txt);font-family:var(--f-body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.brand b{font-family:var(--f-display)}
+a{color:var(--accent)}
+/* ===== Shell no padrão SGERP: menu lateral + topbar ===== */
+.app{display:grid;grid-template-columns:252px minmax(0,1fr);min-height:100vh}
+.nav{background:var(--nav);color:var(--nav-ink);position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;padding-block:14px 18px}
+.nav .brand{display:flex;align-items:center;gap:10px;padding:4px 18px 16px;flex-wrap:nowrap}
+.brand-mark{width:30px;height:30px;border-radius:7px;background:#12A270;display:grid;place-items:center;color:#04150E;font:800 13px/1 var(--f-display)}
+.nav .brand b{font:700 16px/1.1 var(--f-display);color:#EAF4EF;display:block}
+.nav .brand small{font-size:11px;color:var(--nav-muted);letter-spacing:.08em;text-transform:uppercase}
+.nav-group{padding:0}
+.nav-topico{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:0;cursor:pointer;padding:9px 18px;color:var(--nav-ink);font:600 12px/1.4 var(--f-body);letter-spacing:.1em;text-transform:uppercase;border-left:3px solid transparent;text-align:left}
+.nav-topico:hover{background:#ffffff0a}
+.nav-topico.atual{color:#fff;border-left-color:#2CCB8F}
+.nav-topico svg{width:14px;height:14px;flex:none;opacity:.7;transition:transform .15s}
+.nav-group.aberto .nav-topico svg{transform:rotate(90deg)}
+.nav-group.aberto{background:#0000001a;padding-bottom:6px}
+.nav-group.aberto a{padding-left:28px}
+.nav a{display:flex;align-items:center;gap:10px;padding:6px 18px;color:var(--nav-ink);text-decoration:none;font-size:13.5px;border-left:3px solid transparent;cursor:pointer}
+.nav a:hover{background:#ffffff0a}
+.nav a.active{background:#ffffff12;border-left-color:#2CCB8F;color:#fff}
+.nav-foot{margin-top:auto;padding:14px 18px 0;font-size:11.5px;color:var(--nav-muted)}
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:10px 24px;min-height:58px}
+.menu-btn{display:none}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
+.icon-btn,.iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:8px;height:36px;min-width:36px;display:grid;place-items:center;cursor:pointer;color:var(--txt2);font-size:15px}
+.icon-btn:hover,.iconbtn:hover{border-color:var(--txt3)}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--chip);color:var(--accent2);display:grid;place-items:center;font:600 12px var(--f-display)}
+.user-info{font-size:12.5px;line-height:1.25;text-align:right}
+.user-info small{color:var(--txt2);display:block}
+.content{padding:22px 24px 48px;width:100%;max-width:1440px}
 .grow{flex:1}
-.status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);background:var(--chip);padding:5px 10px;border-radius:20px;border:1px solid var(--line)}
+.status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--txt3)}
 .dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
 .dot.off{background:var(--amber)}
-.iconbtn{background:var(--chip);border:1px solid var(--line);color:var(--txt);width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:15px}
-.iconbtn:hover{border-color:var(--line2)}
-nav.tabs{display:flex;gap:4px;margin-top:12px;border-bottom:1px solid var(--line);overflow-x:auto}
-nav.tabs button{background:none;border:none;color:var(--txt2);padding:10px 15px;cursor:pointer;font-size:13.5px;font-weight:600;border-bottom:2px solid transparent;white-space:nowrap;border-radius:8px 8px 0 0}
-nav.tabs button:hover{color:var(--txt)}
-nav.tabs button.active{color:var(--txt);border-bottom-color:var(--accent)}
-.view{display:none;padding-top:18px;animation:fade .25s ease}
+.view{display:none;animation:fade .2s ease}
 .view.active{display:block}
 @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (max-width:900px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .nav{position:fixed;left:0;top:0;bottom:0;width:272px;z-index:45;transform:translateX(-102%);transition:transform .2s}
+  .nav.open{transform:none}
+  .menu-btn{display:grid}
+  .user-info{display:none}
+}
+@media (max-width:560px){ .topbar{padding:10px 16px} .content{padding:16px 16px 40px} }
 .grid{display:grid;gap:14px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
 .panel h3{margin:0 0 3px;font-size:14px;font-weight:700}
@@ -207,31 +250,52 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
   </div>
 </div>
 <div class="app">
-<header class="top">
-  <div class="brand">
-    <div class="logo">FC</div>
-    <div>
-      <h1>Sistema de Controle Financeiro</h1>
-      <div class="sub">Lançamentos · Caixa gerencial · Importações de extratos bancários · Simulador de margem/ponto de venda</div>
-      <div class="sub" style="margin-top:2px"><span style="background:#16a34a;color:#fff;padding:1px 8px;border-radius:10px;font-weight:700;font-size:11px">versão 2026-10-01b · seleção no caixa</span></div>
-    </div>
-    <div class="grow"></div>
-    <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt">verificando…</span></div>
-    <span id="userBadge" class="small" style="margin-left:12px" hidden></span>
-    <select id="empSwitch" class="small" title="Empresa em visualização (somente superadmin)" hidden style="margin-left:8px;padding:3px 6px;border-radius:6px"></select>
-    <button class="btn ghost" id="btnTrocarSenha" hidden style="margin-left:8px;padding:4px 10px" title="Trocar a minha senha">🔑 Trocar senha</button>
-    <button class="btn ghost" id="btnLogout" hidden style="margin-left:8px;padding:4px 10px">Sair</button>
-    <button class="iconbtn" id="themebtn" title="Alternar tema">◑</button>
+<nav class="nav" id="sidebar" aria-label="Menu principal">
+  <div class="brand"><div class="brand-mark">SG</div><div><b>SGERP</b><small>Financeiro</small></div></div>
+  <div class="nav-group aberto" data-g="fin">
+    <button type="button" class="nav-topico atual"><span>Financeiro</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
+    <a data-v="lanc" class="active">🧾 Lançamentos</a>
+    <a data-v="caixager">💵 Fluxo Gerencial</a>
+    <a data-v="dash">📊 Dashboard</a>
   </div>
-  <nav class="tabs" id="tabs">
-    <button data-v="lanc" class="active">🧾 Lançamentos</button>
-    <button data-v="caixager">💵 Fluxo Gerencial</button>
-    <button data-v="dash">📊 Dashboard</button>
-    <button data-v="simlan">🧪 Simulador de Lançamentos</button>
-    <button data-v="sim">⚡ Simulador de Vendas</button>
-    <button data-v="cad">⚙️ Cadastros</button>
-  </nav>
-</header>
+  <div class="nav-group" data-g="sim">
+    <button type="button" class="nav-topico"><span>Simulação</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
+    <a data-v="simlan">🧪 Simulador de Lançamentos</a>
+  </div>
+  <div class="nav-group" data-g="cad">
+    <button type="button" class="nav-topico"><span>Cadastros</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
+    <a data-v="cad">⚙️ Cadastros e usuários</a>
+  </div>
+  <div class="nav-group" data-g="erp">
+    <button type="button" class="nav-topico"><span>ERP – Materiais</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
+    <a data-erp="/">🏠 Painel executivo</a>
+    <a data-erp="/produtos">🏷️ Produtos</a>
+    <a data-erp="/vendas">🛒 Vendas</a>
+    <a data-erp="/estoque">📦 Estoque</a>
+    <a data-erp="/compras">🧾 Ordens de compra</a>
+    <a data-erp="__cfg" style="color:var(--nav-muted);font-size:12px">⚙️ URL do ERP…</a>
+  </div>
+  <div class="nav-foot" id="navFoot">v2026-10-04a · base FCAH</div>
+</nav>
+<div class="main">
+  <header class="topbar">
+    <button class="icon-btn menu-btn" id="menuBtn" aria-label="Abrir menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt" class="small">verificando…</span></div>
+    <select id="empSwitch" class="field" title="Empresa em visualização (somente superadmin)" hidden style="height:34px"></select>
+    <div class="top-actions">
+      <button class="icon-btn" id="btnTrocarSenha" hidden title="Trocar a minha senha">🔑</button>
+      <button class="icon-btn" id="themebtn" title="Alternar tema">◑</button>
+      <div class="user-info" id="userBadge" hidden></div>
+      <button class="btn sm" id="btnLogout" hidden>Sair</button>
+    </div>
+  </header>
+  <main class="content">
+
+<!-- ============ ERP – MATERIAIS (embutido) ============ -->
+<section class="view" id="v-erp" style="margin:-22px -24px -48px">
+  <div id="erpMsg" class="muted small" style="padding:10px 24px" hidden></div>
+  <iframe id="erpFrame" title="ERP – Materiais" style="width:100%;height:calc(100vh - 58px);border:0;display:block;background:var(--panel)"></iframe>
+</section>
 
 <!-- ============ SIMULADOR DE LANÇAMENTOS ============ -->
 <section class="view" id="v-simlan">
@@ -255,34 +319,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
   </div>
 </section>
 
-<!-- ============ SIMULADOR ============ -->
-<section class="view" id="v-sim">
-  <div class="panel" style="margin-bottom:14px">
-    <div class="toolbar" style="margin-bottom:0;align-items:flex-end;flex-wrap:wrap;gap:10px">
-      <h3 style="margin:0 6px 0 0;align-self:center">🎯 Simulação de Vendas</h3>
-      <div class="fld"><label>Câmbio USD→BRL</label><input type="number" id="simCambio" value="5.15" step="0.01" style="width:100px"></div>
-      <input type="text" id="simCenNome" placeholder="nome do cenário…" style="flex:1;min-width:180px">
-      <button class="btn sec" id="simSalvar">💾 Salvar Venda</button>
-      <button class="btn ghost" id="simCarregar">📂 Ver vendas salvas</button>
-      <span class="hint" id="simCenAtual" style="width:100%;margin-top:2px;font-size:12.5px">Cenário: <b>(não salvo)</b></span>
-    </div>
-  </div>
-  <div class="panel">
-    <div class="toolbar" style="margin-bottom:8px"><h3 style="margin:0">1. Produtos e serviços vendidos / mês</h3><div class="grow"></div><button class="btn" id="simNovoProd">＋ Produto/Serviço</button></div>
-    <p class="desc">Edite a <b>quantidade/mês</b> e a <b>alíquota de tributo %</b> direto na tabela. O tributo incide sobre a receita de cada produto. Valores em USD são convertidos pelo câmbio.</p>
-    <div class="tblwrap"><table id="simProdTbl"></table></div>
-  </div>
-  <div class="panel" style="margin-top:14px">
-    <div class="toolbar" style="margin-bottom:8px"><h3 style="margin:0">2. Despesas</h3><div class="grow"></div><button class="btn sec" id="simNovaDesp">＋ Despesa</button></div>
-    <p class="desc">% incide sobre o faturamento; "Fixa" é valor em R$/mês independente da venda.</p>
-    <div class="tblwrap"><table id="simDespTbl"></table></div>
-  </div>
-  <div class="panel" style="margin-top:14px">
-    <h3>3. Resultado (Receitas − Tributos − Custos − Despesas)</h3>
-    <div class="tblwrap"><table id="simResTbl"></table></div>
-    <div class="hint" id="simMetaHint" style="margin-top:10px"></div>
-  </div>
-</section>
+<!-- Simulador de Vendas removido (virou Proposta no ERP) -->
 
 <!-- ============ DASHBOARD ============ -->
 <section class="view" id="v-dash"></section>
@@ -323,7 +360,6 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div class="toolbar">
       <div class="fld"><label>Agrupar por</label><select id="cgModo"><option value="conta">Conta (dentro do grupo)</option><option value="grupo">Somente grupo</option></select></div>
       <div class="fld"><label>Visão</label><select id="cgTipo"><option value="saldo">Saldo (Receitas − Despesas)</option><option value="Receita">Só Receitas</option><option value="Despesa">Só Despesas</option></select></div>
-      <button class="btn sec" id="cgVerVendas" title="Abrir as vendas simuladas salvas (lançar/tirar do fluxo)">📂 Ver Vendas</button>
       <div class="grow"></div>
       <div class="fld"><label>Início (12 meses a partir de)</label><div style="display:flex;gap:4px;align-items:center"><button class="iconbtn" id="cgPrev" title="Mês anterior" type="button">‹</button><select id="cgMes" style="min-width:66px"><option value="0">jan</option><option value="1">fev</option><option value="2">mar</option><option value="3">abr</option><option value="4">mai</option><option value="5">jun</option><option value="6">jul</option><option value="7">ago</option><option value="8">set</option><option value="9">out</option><option value="10">nov</option><option value="11">dez</option></select><select id="cgAno" style="min-width:78px"></select><button class="iconbtn" id="cgNext" title="Próximo mês" type="button">›</button></div></div>
       <button class="btn ghost" id="cgExport">⭳ Exportar CSV</button>
@@ -350,6 +386,12 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
   </div>
 </section>
 
+  <div class="foot">
+    Banco de dados no seu Supabase (<span id="footdb">—</span>) · projeção sempre rastreável até os parâmetros.
+  </div>
+  </main>
+  </div>
+</div>
 <!-- ============ MODAL ============ -->
 <div class="modal-ov" id="modal">
   <div class="modal">
@@ -357,13 +399,6 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <div class="modal-bd" id="modalBody"></div>
     <div class="modal-ft"><button class="btn ghost" id="modalCancel">Cancelar</button><button class="btn" id="modalSave">Salvar</button></div>
   </div>
-</div>
-
-<div class="foot">
-  Sistema gerado a partir da especificação funcional v1.0 · dados 100% carregados da planilha FCAH ·
-  banco de dados no seu Supabase (<span id="footdb">—</span>) · projeção sempre rastreável até os parâmetros.<br>
-  <span class="muted">Módulos: Simulador · Realizado×Projetado · Fluxo projetado · Advisor · Lançamentos · Caixa gerencial · Cadastros. Próxima fase: login por perfil (Supabase Auth) e governança/auditoria.</span>
-</div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -462,12 +497,35 @@ const $=s=>document.querySelector(s); const $$=s=>[...document.querySelectorAll(
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); }
 
 /* tema */
-function initTheme(){ const t=localStorage.getItem('fcah-theme')||'dark'; document.documentElement.setAttribute('data-theme',t);}
-$('#themebtn').onclick=()=>{const c=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',c);localStorage.setItem('fcah-theme',c);renderAll();};
+function initTheme(){ const t=localStorage.getItem('fcah-theme'); if(t)document.documentElement.setAttribute('data-theme',t);}
+$('#themebtn').onclick=()=>{const cur=document.documentElement.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');const c=cur==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',c);localStorage.setItem('fcah-theme',c);renderAll();};
 initTheme();
 
-/* tabs */
-$('#tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$$('#tabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');$$('.view').forEach(v=>v.classList.remove('active'));$('#v-'+b.dataset.v).classList.add('active');renderAll();});
+/* menu lateral (padrão SGERP): troca de view + grupos colapsáveis + botão mobile */
+function switchView(v){ $$('#sidebar a[data-v]').forEach(x=>x.classList.toggle('active',x.dataset.v===v)); $$('.view').forEach(s=>s.classList.remove('active')); const el=$('#v-'+v); if(el)el.classList.add('active'); renderAll(); }
+function marcarMenu(a){ $$('#sidebar a').forEach(x=>x.classList.remove('active')); if(a)a.classList.add('active');
+  $$('#sidebar .nav-group').forEach(x=>x.classList.remove('aberto')); $$('#sidebar .nav-topico').forEach(t=>t.classList.remove('atual'));
+  if(a){ const grp=a.closest('.nav-group'); grp.classList.add('aberto'); grp.querySelector('.nav-topico').classList.add('atual'); } }
+const erpBase=()=>{ try{const u=localStorage.getItem('fcah-erp-url'); if(u)return u.replace(/\/$/,'');}catch(_){}
+  // produção: ERP servido no MESMO domínio, em /erp ; dev local: servidor Vite do SGERP
+  const h=location.hostname; if(h==='localhost'||h==='127.0.0.1'||location.protocol==='file:') return 'http://localhost:5190';
+  return '/erp'; };
+function abrirErp(rota,a){ $$('.view').forEach(s=>s.classList.remove('active')); $('#v-erp').classList.add('active');
+  const url=erpBase()+rota; const f=$('#erpFrame'); if(f)f.src=url; marcarMenu(a);
+  const m=$('#erpMsg'); if(m){ m.hidden=false; m.innerHTML='ERP em <b>'+esc(erpBase())+'</b> — se não carregar, verifique se o SGERP está no ar (local: inicie o SGERP). <a href="#" id="erpCfgLink">trocar URL</a>'; const cl=$('#erpCfgLink'); if(cl)cl.onclick=ev=>{ev.preventDefault();cfgErp();}; }
+  $('#sidebar').classList.remove('open'); }
+function cfgErp(){ let cur=''; try{cur=localStorage.getItem('fcah-erp-url')||'http://localhost:5190';}catch(_){cur='http://localhost:5190';}
+  const v=prompt('URL base do ERP (SGERP). Ex.: http://localhost:5190 (local) ou o endereço publicado.', cur);
+  if(v!=null){ try{localStorage.setItem('fcah-erp-url',v.trim().replace(/\/$/,''));}catch(_){ } toast('URL do ERP salva ✓'); } }
+$('#sidebar').addEventListener('click',e=>{
+  const top=e.target.closest('.nav-topico');
+  if(top){ const g=top.closest('.nav-group'); const open=g.classList.contains('aberto'); $$('#sidebar .nav-group').forEach(x=>x.classList.remove('aberto')); if(!open)g.classList.add('aberto'); return; }
+  const er=e.target.closest('a[data-erp]');
+  if(er){ e.preventDefault(); if(er.dataset.erp==='__cfg'){ cfgErp(); return; } abrirErp(er.dataset.erp,er); return; }
+  const a=e.target.closest('a[data-v]');
+  if(a){ switchView(a.dataset.v); marcarMenu(a); $('#sidebar').classList.remove('open'); }
+});
+if($('#menuBtn'))$('#menuBtn').onclick=()=>$('#sidebar').classList.toggle('open');
 
 /* ---- controles do simulador ---- */
 const CTRLS=[
@@ -524,13 +582,7 @@ function sumArr(a,f){return a.reduce((s,x)=>s+f(x),0);}
 
 /* ===== SIMULADOR DE MARGEM / PONTO DE EQUILÍBRIO ===== */
 const SIM={produtos:[],tributos:[],despesas:[]};
-async function loadSim(){ if(!SB)return;
-  const emp=authEmp(); const scope=q=>(emp!=null?q.eq('empresa_id',emp):q);
-  const [p,d]=await Promise.all([
-    scope(SB.from('fcah_sim_produto').select('*')).order('id'),
-    scope(SB.from('fcah_sim_despesa').select('*')).order('id')]);
-  SIM.produtos=p.data||[];SIM.tributos=[];SIM.despesas=d.data||[]; // tributo agora é por produto (aliquota na própria linha)
-}
+async function loadSim(){ /* Simulador de Vendas removido (virou Proposta no ERP) — stub mantém chamadas antigas seguras */ SIM.produtos=[];SIM.tributos=[];SIM.despesas=[]; }
 // ===== MODELO POR DATAS: gera todos os itens (com data_pagamento) de uma venda =====
 // fy/fm = ano/mês (0-based) da 1ª ENTREGA do negócio. Retorna {items:[{cat,gtipo,valor,y,m,day,conta_id,desc}], semConta:[]}
 // cat: receita|custo|tributo|despesa ; gtipo: Venda|Serviço|Mensal
@@ -1054,7 +1106,7 @@ function buildEmpSwitch(){ const sel=$('#empSwitch'); if(!sel)return;
     await loadSim(); renderSim(); if(typeof renderSimLan==='function')renderSimLan();
     buildEmpSwitch(); toast('Empresa em visualização: '+empresaNome(VIEW_EMP)); };
 }
-function showUserBadge(p){ const b=$('#userBadge'); if(b){ b.hidden=false; b.innerHTML=esc(p.nome||p.email)+' · <b>'+esc(empresaNome(p.empresa_id))+'</b> <span class="tag proj">'+esc(ROLE_LABEL[p.tipo]||p.tipo||'—')+'</span>'; }
+function showUserBadge(p){ const b=$('#userBadge'); if(b){ b.hidden=false; b.innerHTML='<b style="font-weight:600">'+esc(p.nome||p.email)+'</b><small>'+esc(empresaNome(p.empresa_id))+' · '+esc(ROLE_LABEL[p.tipo]||p.tipo||'—')+'</small>'; }
   const lo=$('#btnLogout'); if(lo)lo.hidden=false;
   const ts=$('#btnTrocarSenha'); if(ts)ts.hidden=false; }
 async function doLogin(){ const email=($('#agEmail').value||'').trim(), senha=$('#agSenha').value||'';
