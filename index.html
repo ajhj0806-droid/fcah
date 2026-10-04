@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-04f)</title>
+<title>FCAH — Controle Financeiro (v2026-10-04g)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -59,6 +59,7 @@ a{color:var(--accent)}
 .nav-group.aberto{background:#0000001a;padding-bottom:6px}
 .nav-group.aberto a{padding-left:28px}
 .nav a{display:flex;align-items:center;gap:10px;padding:6px 18px;color:var(--nav-ink);text-decoration:none;font-size:13.5px;border-left:3px solid transparent;cursor:pointer}
+.nav a svg{width:16px;height:16px;flex:none;opacity:.8}
 .nav a:hover{background:#ffffff0a}
 .nav a.active{background:#ffffff12;border-left-color:#2CCB8F;color:#fff}
 .nav-foot{margin-top:auto;padding:14px 18px 0;font-size:11.5px;color:var(--nav-muted)}
@@ -71,7 +72,6 @@ a{color:var(--accent)}
 /* Módulo Materiais (ERP em tela cheia): some só o menu lateral do FCAH; o topo (com o alternador) permanece */
 body.erp-full .nav,body.nav-collapsed .nav{display:none}
 body.erp-full .body,body.nav-collapsed .body{grid-template-columns:minmax(0,1fr)}
-body.erp-full .menu-btn{display:none}
 body.nav-collapsed .content,body.erp-full .content{max-width:none}
 .menu-btn{display:grid}
 .top-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
@@ -279,21 +279,21 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
 </header>
 <div class="body">
 <nav class="nav" id="sidebar" aria-label="Menu principal">
-  <div class="nav-group aberto" data-g="fin">
+  <div class="nav-group" data-g="fin">
     <button type="button" class="nav-topico atual"><span>Financeiro</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
-    <a data-v="lanc" class="active">Lançamentos</a>
-    <a data-v="caixager">Fluxo Gerencial</a>
-    <a data-v="dash">Dashboard</a>
+    <a data-v="lanc" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Lançamentos</span></a>
+    <a data-v="caixager"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 5-6"/></svg><span>Fluxo Gerencial</span></a>
+    <a data-v="dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg><span>Dashboard</span></a>
   </div>
   <div class="nav-group" data-g="sim">
     <button type="button" class="nav-topico"><span>Simulação</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
-    <a data-v="simlan">Simulador de Lançamentos</a>
+    <a data-v="simlan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 7 21h10a2 2 0 0 0 1.8-3L14 9V3"/></svg><span>Simulador de Lançamentos</span></a>
   </div>
   <div class="nav-group" data-g="cad">
     <button type="button" class="nav-topico"><span>Cadastros</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
-    <a data-v="cad">Cadastros e usuários</a>
+    <a data-v="cad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20.5c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5M16.5 11a3 3 0 0 0 0-6M21.5 20.5c0-2.8-1.7-5.2-4.2-6.2"/></svg><span>Cadastros e usuários</span></a>
   </div>
-  <div class="nav-foot" id="navFoot">v2026-10-04f · base FCAH</div>
+  <div class="nav-foot" id="navFoot">v2026-10-04g · base FCAH</div>
 </nav>
 <main class="content">
 
@@ -506,7 +506,9 @@ initTheme();
 
 /* menu lateral (padrão SGERP): troca de view + grupos colapsáveis + botão mobile */
 function setMod(m){ $$('.modswitch button[data-mod]').forEach(b=>b.classList.toggle('active', b.dataset.mod===m)); const l=$('#modLabel'); if(l)l.textContent=(m==='mat'?'MATERIAIS':'FINANCEIRO'); }
-function switchView(v){ document.body.classList.remove('erp-full'); setMod('fin'); $$('#sidebar a[data-v]').forEach(x=>x.classList.toggle('active',x.dataset.v===v)); $$('.view').forEach(s=>s.classList.remove('active')); const el=$('#v-'+v); if(el)el.classList.add('active'); renderAll(); }
+function switchView(v){ document.body.classList.remove('erp-full'); setMod('fin'); $$('#sidebar a[data-v]').forEach(x=>x.classList.toggle('active',x.dataset.v===v)); $$('.view').forEach(s=>s.classList.remove('active')); const el=$('#v-'+v); if(el)el.classList.add('active');
+  const a=$('#sidebar a[data-v="'+v+'"]'); $$('#sidebar .nav-topico').forEach(t=>t.classList.remove('atual')); if(a){ const grp=a.closest('.nav-group'); const t=grp&&grp.querySelector('.nav-topico'); if(t)t.classList.add('atual'); }
+  renderAll(); }
 function marcarMenu(a){ $$('#sidebar a').forEach(x=>x.classList.remove('active')); if(a)a.classList.add('active');
   $$('#sidebar .nav-group').forEach(x=>x.classList.remove('aberto')); $$('#sidebar .nav-topico').forEach(t=>t.classList.remove('atual'));
   if(a){ const grp=a.closest('.nav-group'); grp.classList.add('aberto'); grp.querySelector('.nav-topico').classList.add('atual'); } }
@@ -522,16 +524,19 @@ function abrirErp(rota,a){ document.body.classList.add('erp-full'); setMod('mat'
 function cfgErp(){ let cur=''; try{cur=localStorage.getItem('fcah-erp-url')||'http://localhost:5190';}catch(_){cur='http://localhost:5190';}
   const v=prompt('URL base do ERP (SGERP). Ex.: http://localhost:5190 (local) ou o endereço publicado.', cur);
   if(v!=null){ try{localStorage.setItem('fcah-erp-url',v.trim().replace(/\/$/,''));}catch(_){ } toast('URL do ERP salva ✓'); } }
-$$('.modswitch button[data-mod]').forEach(b=>b.onclick=()=>{ if(b.dataset.mod==='mat') abrirErp('/',null); else { switchView('lanc'); marcarMenu($('#sidebar a[data-v="lanc"]')); } });
+$$('.modswitch button[data-mod]').forEach(b=>b.onclick=()=>{ if(b.dataset.mod==='mat') abrirErp('/',null); else { $$('#sidebar .nav-group').forEach(x=>x.classList.remove('aberto')); switchView('lanc'); } });
 $('#sidebar').addEventListener('click',e=>{
   const top=e.target.closest('.nav-topico');
   if(top){ if(top.dataset.erp){ e.preventDefault(); abrirErp(top.dataset.erp,top); $('#sidebar').classList.remove('open'); return; } const g=top.closest('.nav-group'); const open=g.classList.contains('aberto'); $$('#sidebar .nav-group').forEach(x=>x.classList.remove('aberto')); if(!open)g.classList.add('aberto'); return; }
   const er=e.target.closest('a[data-erp]');
   if(er){ e.preventDefault(); if(er.dataset.erp==='__cfg'){ cfgErp(); return; } abrirErp(er.dataset.erp,er); return; }
   const a=e.target.closest('a[data-v]');
-  if(a){ switchView(a.dataset.v); marcarMenu(a); $('#sidebar').classList.remove('open'); }
+  if(a){ switchView(a.dataset.v); $('#sidebar').classList.remove('open'); }
 });
-if($('#menuBtn'))$('#menuBtn').onclick=()=>{ if(window.innerWidth<=900) $('#sidebar').classList.toggle('open'); else document.body.classList.toggle('nav-collapsed'); };
+if($('#menuBtn'))$('#menuBtn').onclick=()=>{
+  if(document.body.classList.contains('erp-full')){ const f=$('#erpFrame'); if(f&&f.contentWindow){ let o='*'; try{ const b=erpBase(); o=b.startsWith('http')?new URL(b).origin:location.origin; }catch(_){ } f.contentWindow.postMessage({sgerp:'toggle-nav'},o); } }
+  else if(window.innerWidth<=900){ $('#sidebar').classList.toggle('open'); }
+  else { document.body.classList.toggle('nav-collapsed'); } };
 
 /* ---- controles do simulador ---- */
 const CTRLS=[
