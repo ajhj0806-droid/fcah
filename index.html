@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-04d)</title>
+<title>FCAH — Controle Financeiro (v2026-10-04e)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -63,12 +63,14 @@ a{color:var(--accent)}
 .nav-foot{margin-top:auto;padding:14px 18px 0;font-size:11.5px;color:var(--nav-muted)}
 .main{min-width:0;display:flex;flex-direction:column}
 .topbar{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:10px 24px;min-height:58px}
-/* ERP em tela cheia: esconde a moldura do FCAH, deixando só o botão Voltar */
-#erpVoltar{display:none}
+/* Alternador de módulos (Financeiro | Materiais) no topo */
+.modswitch{display:inline-flex;margin-inline:auto;background:rgba(127,127,127,.14);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.modswitch button{border:0;background:transparent;color:inherit;font:650 13px var(--f-body,inherit);padding:6px 16px;border-radius:7px;cursor:pointer;opacity:.72}
+.modswitch button.active{background:var(--accent);color:#fff;opacity:1}
+/* Módulo Materiais (ERP em tela cheia): some só o menu lateral do FCAH; o topo (com o alternador) permanece */
 body.erp-full .nav{display:none}
 body.erp-full .app{grid-template-columns:minmax(0,1fr)}
-body.erp-full .topbar>*{display:none}
-body.erp-full .topbar #erpVoltar{display:inline-flex}
+body.erp-full .menu-btn{display:none}
 .menu-btn{display:none}
 .top-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
 .icon-btn,.iconbtn{border:1px solid var(--line);background:var(--panel);border-radius:8px;height:36px;min-width:36px;display:grid;place-items:center;cursor:pointer;color:var(--txt2);font-size:15px}
@@ -260,29 +262,29 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
   <div class="brand"><div class="brand-mark">SG</div><div><b>SGERP</b><small>Financeiro</small></div></div>
   <div class="nav-group aberto" data-g="fin">
     <button type="button" class="nav-topico atual"><span>Financeiro</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
-    <a data-v="lanc" class="active">🧾 Lançamentos</a>
-    <a data-v="caixager">💵 Fluxo Gerencial</a>
-    <a data-v="dash">📊 Dashboard</a>
+    <a data-v="lanc" class="active">Lançamentos</a>
+    <a data-v="caixager">Fluxo Gerencial</a>
+    <a data-v="dash">Dashboard</a>
   </div>
   <div class="nav-group" data-g="sim">
     <button type="button" class="nav-topico"><span>Simulação</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
-    <a data-v="simlan">🧪 Simulador de Lançamentos</a>
+    <a data-v="simlan">Simulador de Lançamentos</a>
   </div>
   <div class="nav-group" data-g="cad">
     <button type="button" class="nav-topico"><span>Cadastros</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
-    <a data-v="cad">⚙️ Cadastros e usuários</a>
+    <a data-v="cad">Cadastros e usuários</a>
   </div>
-  <div class="nav-group" data-g="erp">
-    <a class="nav-topico" data-erp="/" style="cursor:pointer"><span>📦 Materiais</span></a>
-  </div>
-  <div class="nav-foot" id="navFoot">v2026-10-04d · base FCAH</div>
+  <div class="nav-foot" id="navFoot">v2026-10-04e · base FCAH</div>
 </nav>
 <div class="main">
   <header class="topbar">
-    <button class="btn sm" id="erpVoltar">‹ Voltar ao Financeiro</button>
     <button class="icon-btn menu-btn" id="menuBtn" aria-label="Abrir menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
     <div class="status"><span id="dbdot" class="dot off"></span><span id="dbtxt" class="small">verificando…</span></div>
     <select id="empSwitch" class="field" title="Empresa em visualização (somente superadmin)" hidden style="height:34px"></select>
+    <div class="modswitch" role="tablist">
+      <button type="button" data-mod="fin" class="active">Financeiro</button>
+      <button type="button" data-mod="mat">Materiais</button>
+    </div>
     <div class="top-actions">
       <button class="icon-btn" id="btnTrocarSenha" hidden title="Trocar a minha senha">🔑</button>
       <button class="icon-btn" id="themebtn" title="Alternar tema">◑</button>
@@ -387,9 +389,6 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
   </div>
 </section>
 
-  <div class="foot">
-    Banco de dados no seu Supabase (<span id="footdb">—</span>) · projeção sempre rastreável até os parâmetros.
-  </div>
   </main>
   </div>
 </div>
@@ -503,7 +502,8 @@ $('#themebtn').onclick=()=>{const cur=document.documentElement.getAttribute('dat
 initTheme();
 
 /* menu lateral (padrão SGERP): troca de view + grupos colapsáveis + botão mobile */
-function switchView(v){ document.body.classList.remove('erp-full'); $$('#sidebar a[data-v]').forEach(x=>x.classList.toggle('active',x.dataset.v===v)); $$('.view').forEach(s=>s.classList.remove('active')); const el=$('#v-'+v); if(el)el.classList.add('active'); renderAll(); }
+function setMod(m){ $$('.modswitch button[data-mod]').forEach(b=>b.classList.toggle('active', b.dataset.mod===m)); }
+function switchView(v){ document.body.classList.remove('erp-full'); setMod('fin'); $$('#sidebar a[data-v]').forEach(x=>x.classList.toggle('active',x.dataset.v===v)); $$('.view').forEach(s=>s.classList.remove('active')); const el=$('#v-'+v); if(el)el.classList.add('active'); renderAll(); }
 function marcarMenu(a){ $$('#sidebar a').forEach(x=>x.classList.remove('active')); if(a)a.classList.add('active');
   $$('#sidebar .nav-group').forEach(x=>x.classList.remove('aberto')); $$('#sidebar .nav-topico').forEach(t=>t.classList.remove('atual'));
   if(a){ const grp=a.closest('.nav-group'); grp.classList.add('aberto'); grp.querySelector('.nav-topico').classList.add('atual'); } }
@@ -511,15 +511,15 @@ const erpBase=()=>{ try{const u=localStorage.getItem('fcah-erp-url'); if(u)retur
   // produção: ERP servido no MESMO domínio, em /erp ; dev local: servidor Vite do SGERP
   const h=location.hostname; if(h==='localhost'||h==='127.0.0.1'||location.protocol==='file:') return 'http://localhost:5190';
   return '/erp'; };
-function abrirErp(rota,a){ document.body.classList.add('erp-full'); $$('.view').forEach(s=>s.classList.remove('active')); $('#v-erp').classList.add('active');
-  const url=erpBase()+rota; const f=$('#erpFrame'); if(f)f.src=url; marcarMenu(a);
+function abrirErp(rota,a){ document.body.classList.add('erp-full'); setMod('mat'); $$('.view').forEach(s=>s.classList.remove('active')); $('#v-erp').classList.add('active');
+  const url=erpBase()+rota; const f=$('#erpFrame'); if(f && !f.getAttribute('src')) f.setAttribute('src',url); marcarMenu(a);
   const m=$('#erpMsg'); const _devErp=erpBase().startsWith('http://localhost');
   if(m){ if(_devErp){ m.hidden=false; m.innerHTML='ERP em <b>'+esc(erpBase())+'</b> — se não carregar, inicie o servidor do SGERP. <a href="#" id="erpCfgLink">trocar URL</a>'; const cl=$('#erpCfgLink'); if(cl)cl.onclick=ev=>{ev.preventDefault();cfgErp();}; } else { m.hidden=true; } }
   $('#sidebar').classList.remove('open'); }
 function cfgErp(){ let cur=''; try{cur=localStorage.getItem('fcah-erp-url')||'http://localhost:5190';}catch(_){cur='http://localhost:5190';}
   const v=prompt('URL base do ERP (SGERP). Ex.: http://localhost:5190 (local) ou o endereço publicado.', cur);
   if(v!=null){ try{localStorage.setItem('fcah-erp-url',v.trim().replace(/\/$/,''));}catch(_){ } toast('URL do ERP salva ✓'); } }
-{ const _bv=$('#erpVoltar'); if(_bv)_bv.onclick=()=>{ switchView('lanc'); marcarMenu($('#sidebar a[data-v="lanc"]')); }; }
+$$('.modswitch button[data-mod]').forEach(b=>b.onclick=()=>{ if(b.dataset.mod==='mat') abrirErp('/',null); else { switchView('lanc'); marcarMenu($('#sidebar a[data-v="lanc"]')); } });
 $('#sidebar').addEventListener('click',e=>{
   const top=e.target.closest('.nav-topico');
   if(top){ if(top.dataset.erp){ e.preventDefault(); abrirErp(top.dataset.erp,top); $('#sidebar').classList.remove('open'); return; } const g=top.closest('.nav-group'); const open=g.classList.contains('aberto'); $$('#sidebar .nav-group').forEach(x=>x.classList.remove('aberto')); if(!open)g.classList.add('aberto'); return; }
