@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-04h)</title>
+<title>FCAH — Controle Financeiro (v2026-10-05a)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -46,7 +46,7 @@ a{color:var(--accent)}
 .app{display:flex;flex-direction:column;min-height:100vh}
 .body{display:grid;grid-template-columns:252px minmax(0,1fr);flex:1;min-height:0}
 .nav{background:var(--nav);color:var(--nav-ink);position:sticky;top:58px;height:calc(100vh - 58px);overflow-y:auto;display:flex;flex-direction:column;padding-block:14px 18px}
-.topbar .brand{display:flex;align-items:center;gap:10px;background:var(--nav);color:var(--nav-ink);align-self:stretch;padding:0 20px;min-width:214px}
+.topbar .brand{display:flex;align-items:center;gap:10px;background:var(--nav);color:var(--nav-ink);align-self:stretch;padding:0 20px;width:252px;box-sizing:border-box}
 .brand-mark{width:30px;height:30px;border-radius:7px;background:#12A270;display:grid;place-items:center;color:#04150E;font:800 13px/1 var(--f-display)}
 .topbar .brand b{font:700 16px/1.1 var(--f-display);color:#EAF4EF;display:block}
 .topbar .brand small{font-size:11px;color:var(--nav-muted);letter-spacing:.08em;text-transform:uppercase;display:block}
@@ -294,7 +294,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <button type="button" class="nav-topico"><span>Cadastros</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
     <a data-v="cad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20.5c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5M16.5 11a3 3 0 0 0 0-6M21.5 20.5c0-2.8-1.7-5.2-4.2-6.2"/></svg><span>Cadastros e usuários</span></a>
   </div>
-  <div class="nav-foot" id="navFoot">v2026-10-04h · base FCAH</div>
+  <div class="nav-foot" id="navFoot">v2026-10-05a · base FCAH</div>
 </nav>
 <main class="content">
 
