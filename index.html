@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-05a)</title>
+<title>FCAH — Controle Financeiro (v2026-10-05b)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -294,7 +294,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <button type="button" class="nav-topico"><span>Cadastros</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
     <a data-v="cad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20.5c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5M16.5 11a3 3 0 0 0 0-6M21.5 20.5c0-2.8-1.7-5.2-4.2-6.2"/></svg><span>Cadastros e usuários</span></a>
   </div>
-  <div class="nav-foot" id="navFoot">v2026-10-05a · base FCAH</div>
+  <div class="nav-foot" id="navFoot">v2026-10-05b · base FCAH</div>
 </nav>
 <main class="content">
 
@@ -525,7 +525,9 @@ function abrirErp(rota,a){ document.body.classList.add('erp-full'); setMod('mat'
 function cfgErp(){ let cur=''; try{cur=localStorage.getItem('fcah-erp-url')||'http://localhost:5190';}catch(_){cur='http://localhost:5190';}
   const v=prompt('URL base do ERP (SGERP). Ex.: http://localhost:5190 (local) ou o endereço publicado.', cur);
   if(v!=null){ try{localStorage.setItem('fcah-erp-url',v.trim().replace(/\/$/,''));}catch(_){ } toast('URL do ERP salva ✓'); } }
-$$('.modswitch button[data-mod]').forEach(b=>b.onclick=()=>{ if(b.dataset.mod==='mat') abrirErp('/',null); else { $$('#sidebar .nav-group').forEach(x=>x.classList.remove('aberto')); switchView('lanc'); } });
+$$('.modswitch button[data-mod]').forEach(b=>b.onclick=()=>{ if(b.dataset.mod==='mat') abrirErp('/',null); else { $$('#sidebar .nav-group').forEach(x=>x.classList.remove('aberto')); switchView('lanc'); if(SB) loadLanc().then(()=>renderAll()).catch(()=>{}); } });
+// o ERP (iframe) avisa quando mexe no fluxo do FCAH (lançar/tirar/converter) → recarrega na hora
+window.addEventListener('message', ev=>{ if(ev.data && ev.data.sgerp==='fcah-changed' && SB) loadLanc().then(()=>renderAll()).catch(()=>{}); });
 $('#sidebar').addEventListener('click',e=>{
   const top=e.target.closest('.nav-topico');
   if(top){ if(top.dataset.erp){ e.preventDefault(); abrirErp(top.dataset.erp,top); $('#sidebar').classList.remove('open'); return; } const g=top.closest('.nav-group'); const open=g.classList.contains('aberto'); $$('#sidebar .nav-group').forEach(x=>x.classList.remove('aberto')); if(!open)g.classList.add('aberto'); return; }
