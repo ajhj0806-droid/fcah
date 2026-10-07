@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-05b)</title>
+<title>FCAH — Controle Financeiro (v2026-10-07a)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -198,30 +198,17 @@ td.acts{white-space:nowrap;text-align:right}
 </head>
 <body>
 <style id="permStyle">
-/* Papéis: esconder controles de escrita para quem não pode */
-/* Sem permissão de LANÇAMENTOS/SIMULADORES (visualizador) */
-body.perm-no-lanc #btnNovoLanc,
-body.perm-no-lanc #btnImport,
-body.perm-no-lanc #btnDelFut,
-body.perm-no-lanc #btnDelImport,
-body.perm-no-lanc #v-lanc .acts,
-body.perm-no-lanc #drillNovo,
-body.perm-no-lanc #slGerar,
-body.perm-no-lanc #v-simlan .acts,
-body.perm-no-lanc #simSalvar,
-body.perm-no-lanc #simNovoProd,
-body.perm-no-lanc #simNovoTrib,
-body.perm-no-lanc #simNovaDesp,
-body.perm-no-lanc #v-sim .acts,
-body.perm-no-lanc [data-dact],
-body.perm-no-lanc [data-simact],
-body.perm-no-lanc [data-sact],
-body.perm-no-lanc [data-delcen]{ display:none !important; }
-/* Sem permissão de CADASTROS (operador, visualizador) */
-body.perm-no-cad #btnNovoCad,
-body.perm-no-cad #btnRegrasView,
-body.perm-no-cad #btnRegrasClean,
-body.perm-no-cad #v-cad .acts{ display:none !important; }
+/* Permissões por TELA (níveis 1 Acesso · 2 Relatórios · 3 Gravação · 4 Exclusão) — o RLS é a segurança real */
+body.perm-no-lanc #btnNovoLanc, body.perm-no-lanc #btnImport, body.perm-no-lanc #btnDelFut, body.perm-no-lanc #btnDelImport,
+body.perm-no-lanc #v-lanc .acts, body.perm-no-lanc #lancBulkConta, body.perm-no-lanc #lancBulkDel,
+body.perm-no-del-lanc #btnDelFut, body.perm-no-del-lanc #btnDelImport, body.perm-no-del-lanc #v-lanc [data-act="del"], body.perm-no-del-lanc #lancBulkDel,
+body.perm-no-rel-lanc #btnExportLanc,
+body.perm-no-fluxo #drillNovo, body.perm-no-fluxo [data-dact], body.perm-no-fluxo #drillBulkConta, body.perm-no-fluxo #drillBulkDel,
+body.perm-no-del-fluxo [data-dact="del"], body.perm-no-del-fluxo #drillBulkDel,
+body.perm-no-rel-fluxo #cgExport,
+body.perm-no-simlan #slGerar, body.perm-no-simlan #v-simlan .acts, body.perm-no-simlan [data-simact],
+body.perm-no-cad #btnNovoCad, body.perm-no-cad #btnRegrasView, body.perm-no-cad #btnRegrasClean, body.perm-no-cad #v-cad .acts,
+body.perm-no-del-cad #v-cad [data-act="del"]{ display:none !important; }
 /* Dashboard */
 #v-dash .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:900px){#v-dash .dgrid{grid-template-columns:1fr}}
@@ -294,7 +281,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <button type="button" class="nav-topico"><span>Cadastros</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
     <a data-v="cad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20.5c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5M16.5 11a3 3 0 0 0 0-6M21.5 20.5c0-2.8-1.7-5.2-4.2-6.2"/></svg><span>Cadastros e usuários</span></a>
   </div>
-  <div class="nav-foot" id="navFoot">v2026-10-05b · base FCAH</div>
+  <div class="nav-foot" id="navFoot">v2026-10-07a · base FCAH</div>
 </nav>
 <main class="content">
 
@@ -387,7 +374,7 @@ body.perm-no-cad #v-cad .acts{ display:none !important; }
     <button data-s="empresas" data-sa="1" hidden>Empresas</button>
   </div>
   <div class="panel">
-    <div class="toolbar"><h3 id="cadTitle" style="margin:0">Grupos de contas</h3><div class="grow"></div><button class="btn ghost" id="btnRegrasView" style="display:none">👁 Ver por conta</button><button class="btn ghost" id="btnRegrasClean" style="display:none">🧹 Resolver conflitos/duplicatas</button><button class="btn" id="btnNovoCad">＋ Novo</button></div>
+    <div class="toolbar"><h3 id="cadTitle" style="margin:0">Grupos de contas</h3><div class="grow"></div><button class="btn ghost" id="btnRegrasView" style="display:none">👁 Ver por conta</button><button class="btn ghost" id="btnRegrasClean" style="display:none">🧹 Resolver conflitos/duplicatas</button><button class="btn ghost" id="btnPermTela" style="display:none" title="Definir o que cada usuário pode ver, gravar e excluir nos dois sistemas">🔐 Permissões por tela</button><button class="btn" id="btnNovoCad">＋ Novo</button></div>
     <div id="cadFiltros" hidden style="margin-bottom:10px"></div>
     <div class="tblwrap"><table id="cadTbl"></table></div>
   </div>
@@ -525,7 +512,7 @@ function abrirErp(rota,a){ document.body.classList.add('erp-full'); setMod('mat'
 function cfgErp(){ let cur=''; try{cur=localStorage.getItem('fcah-erp-url')||'http://localhost:5190';}catch(_){cur='http://localhost:5190';}
   const v=prompt('URL base do ERP (SGERP). Ex.: http://localhost:5190 (local) ou o endereço publicado.', cur);
   if(v!=null){ try{localStorage.setItem('fcah-erp-url',v.trim().replace(/\/$/,''));}catch(_){ } toast('URL do ERP salva ✓'); } }
-$$('.modswitch button[data-mod]').forEach(b=>b.onclick=()=>{ if(b.dataset.mod==='mat') abrirErp('/',null); else { $$('#sidebar .nav-group').forEach(x=>x.classList.remove('aberto')); switchView('lanc'); if(SB) loadLanc().then(()=>renderAll()).catch(()=>{}); } });
+$$('.modswitch button[data-mod]').forEach(b=>b.onclick=()=>{ if(b.dataset.mod==='mat') abrirErp('/',null); else { $$('#sidebar .nav-group').forEach(x=>x.classList.remove('aberto')); switchView(viewInicial()); if(SB) loadLanc().then(()=>renderAll()).catch(()=>{}); } });
 // o ERP (iframe) avisa quando mexe no fluxo do FCAH (lançar/tirar/converter) → recarrega na hora
 window.addEventListener('message', ev=>{ if(ev.data && ev.data.sgerp==='fcah-changed' && SB) loadLanc().then(()=>renderAll()).catch(()=>{}); });
 $('#sidebar').addEventListener('click',e=>{
@@ -1069,21 +1056,39 @@ function showAuthGate(mode){ const g=$('#authGate'); if(!g)return; g.hidden=fals
   agMsg(''); if(mode==='login'){ const e=$('#agEmail'); if(e)e.focus(); } }
 function hideAuthGate(){ const g=$('#authGate'); if(g){ g.hidden=true; g.style.display='none'; } }
 /* ---- Papéis de acesso (permissões por tipo de usuário) ---- */
-const PERM={ver:true,lanc:false,cad:false,usuarios:false,empresas:false};
-function computePerm(tipo){
-  tipo=String(tipo||'');
+const PERM={ver:true,lanc:false,cad:false,usuarios:false,empresas:false,admin:false,matAdmin:false,fin:true,mat:true,niv:{}};
+// cada tela do Financeiro ↔ código no catálogo de permissões (tabela tela; configurado em Materiais › Administração › Usuários e permissões)
+const VIEW_TELA={lanc:'fin.lancamentos',caixager:'fin.fluxo',dash:'fin.dashboard',simlan:'fin.simlan',cad:'fin.cadastros'};
+function nivelTela(t){ return PERM.admin?4:(+PERM.niv[t]||0); }
+function viewInicial(){ return Object.keys(VIEW_TELA).find(v=>nivelTela(VIEW_TELA[v])>=1)||'lanc'; }
+async function loadPerms(){ try{ const r=await SB.rpc('minhas_permissoes_fcah'); if(r&&!r.error&&r.data) return r.data; }catch(_){ } return {}; }
+function computePerm(tipo,mp){
+  tipo=String(tipo||''); mp=mp||{};
+  PERM.niv=mp.niveis||{};
+  PERM.admin    = tipo==='superadmin'||tipo==='admin'||!!mp.admin;
+  PERM.matAdmin = !!mp.mat_admin;
   PERM.empresas = tipo==='superadmin';
-  PERM.usuarios = tipo==='superadmin'||tipo==='admin';
-  PERM.cad      = tipo==='superadmin'||tipo==='admin';
-  PERM.lanc     = tipo==='superadmin'||tipo==='admin'||tipo==='operador';
+  PERM.usuarios = PERM.admin;
+  PERM.cad      = nivelTela('fin.cadastros')>=3;
+  PERM.lanc     = nivelTela('fin.lancamentos')>=3;
+  PERM.fin = PERM.admin || Object.values(VIEW_TELA).some(t=>nivelTela(t)>=1);
+  PERM.mat = PERM.matAdmin || Object.keys(PERM.niv).some(k=>k.indexOf('mat.')===0 && PERM.niv[k]>0);
 }
 function applyPerms(){
-  document.body.classList.toggle('perm-no-lanc', !PERM.lanc);
-  document.body.classList.toggle('perm-no-cad',  !PERM.cad);
+  const b=document.body, n=nivelTela, show=(el,on)=>{ if(el) el.style.display=on?'':'none'; };
+  b.classList.toggle('perm-no-lanc', n('fin.lancamentos')<3); b.classList.toggle('perm-no-del-lanc', n('fin.lancamentos')<4); b.classList.toggle('perm-no-rel-lanc', n('fin.lancamentos')<2);
+  b.classList.toggle('perm-no-fluxo', n('fin.fluxo')<3); b.classList.toggle('perm-no-del-fluxo', n('fin.fluxo')<4); b.classList.toggle('perm-no-rel-fluxo', n('fin.fluxo')<2);
+  b.classList.toggle('perm-no-simlan', n('fin.simlan')<3);
+  b.classList.toggle('perm-no-cad', n('fin.cadastros')<3); b.classList.toggle('perm-no-del-cad', n('fin.cadastros')<4);
+  // menu: só as telas com Acesso; o grupo some se ficar vazio
+  Object.keys(VIEW_TELA).forEach(v=>show(document.querySelector('#sidebar a[data-v="'+v+'"]'), n(VIEW_TELA[v])>=1));
+  document.querySelectorAll('#sidebar .nav-group').forEach(g=>{ const ls=[...g.querySelectorAll('a[data-v]')]; if(ls.length) show(g, ls.some(a=>a.style.display!=='none')); });
+  show(document.querySelector('.modswitch [data-mod="fin"]'), PERM.fin);
+  show(document.querySelector('.modswitch [data-mod="mat"]'), PERM.mat);
   document.querySelectorAll('#cadSubtabs [data-s="usuarios"]').forEach(b=>{ b.hidden=!PERM.usuarios; });
   document.querySelectorAll('#cadSubtabs [data-s="empresas"]').forEach(b=>{ b.hidden=!PERM.empresas; });
 }
-const ROLE_LABEL={superadmin:'superadmin',admin:'administrador',operador:'operador',visualizador:'visualizador'};
+const ROLE_LABEL={superadmin:'superadmin',admin:'administrador',operador:'usuário (permissões por tela)',visualizador:'usuário (permissões por tela)'};
 function traduzAuthErr(m){ m=String(m||'').trim();
   if(!m) return 'Não foi possível entrar (sem detalhes do servidor). Tente de novo em instantes.';
   if(/Invalid login credentials/i.test(m)) return 'E-mail ou senha inválidos.';
@@ -1107,8 +1112,11 @@ async function afterLogin(user){
   hideAuthGate(); setDB(true,'Supabase conectado');
   await T(loadGestao(),'carregar cadastros/lançamentos'); fillGestaoSelects(); renderGestao();
   await T(loadSim(),'carregar simulador'); renderSim();
-  computePerm(prof.tipo); applyPerms();
+  computePerm(prof.tipo, await T(loadPerms(),'ler permissões')); applyPerms();
   showUserBadge(prof); buildEmpSwitch();
+  // abre na 1ª tela permitida (ou direto no Materiais, se não tiver nada no Financeiro)
+  if(!PERM.fin){ if(PERM.mat) abrirErp('/',null); else toast('Seu usuário ainda não tem telas liberadas. Fale com o administrador.'); }
+  else if(nivelTela('fin.lancamentos')<1) switchView(viewInicial());
 }
 // seletor de empresa (só superadmin): troca a empresa em visualização
 function buildEmpSwitch(){ const sel=$('#empSwitch'); if(!sel)return;
@@ -1120,7 +1128,7 @@ function buildEmpSwitch(){ const sel=$('#empSwitch'); if(!sel)return;
     await loadSim(); renderSim(); if(typeof renderSimLan==='function')renderSimLan();
     buildEmpSwitch(); toast('Empresa em visualização: '+empresaNome(VIEW_EMP)); };
 }
-function showUserBadge(p){ const b=$('#userBadge'); if(b){ b.hidden=false; b.innerHTML='<b style="font-weight:600">'+esc(p.nome||p.email)+'</b><small>'+esc(empresaNome(p.empresa_id))+' · '+esc(ROLE_LABEL[p.tipo]||p.tipo||'—')+'</small>'; }
+function showUserBadge(p){ const b=$('#userBadge'); if(b){ b.hidden=false; b.innerHTML='<b style="font-weight:600">'+esc(p.nome||p.email)+'</b><small>'+esc(empresaNome(p.empresa_id))+' · '+esc(PERM.admin?(p.tipo==='superadmin'?'superadmin':'administrador'):'usuário')+'</small>'; }
   const lo=$('#btnLogout'); if(lo)lo.hidden=false;
   const ts=$('#btnTrocarSenha'); if(ts)ts.hidden=false; }
 async function doLogin(){ const email=($('#agEmail').value||'').trim(), senha=$('#agSenha').value||'';
@@ -2139,6 +2147,7 @@ function empresaOptions(sel){return '<option value="">— sem empresa —</optio
 function renderCad(){
   if(!$('#cadTbl'))return; const def=CAD_DEF[CAD_SUB]; $('#cadTitle').textContent=def.title;
   const bn=$('#btnNovoCad'); if(bn){ if(CAD_SUB==='usuarios'){ bn.style.display=PERM.usuarios?'':'none'; bn.textContent='＋ Novo usuário'; } else { bn.style.display=''; bn.textContent='＋ Novo'; } }
+  const bp=$('#btnPermTela'); if(bp) bp.style.display=(CAD_SUB==='usuarios'&&PERM.usuarios)?'':'none';
   const bc=$('#btnRegrasClean'); if(bc) bc.style.display=(CAD_SUB==='regras')?'':'none';
   const bv=$('#btnRegrasView'); if(bv){ bv.style.display=(CAD_SUB==='regras')?'':'none'; bv.textContent=REGRAS_VIEW==='palavra'?'👁 Ver por conta':'👁 Ver por palavra'; }
   if(!SB){semDB('#cadTbl');return;}
@@ -2225,7 +2234,7 @@ function formCad(it){ it=it||{};
   if(CAD_SUB==='meios')return `<div class="form-grid"><div class="fld full"><label>Nome</label><input type="text" id="cf_nome" value="${esc(it.nome)}"></div><div class="fld"><label>Tipo</label><select id="cf_tipo">${['Pix','Dinheiro','Boleto','Transferência','Débito','Cartão de Crédito'].map(t=>`<option ${it.tipo===t?'selected':''}>${t}</option>`).join('')}</select></div><div class="fld"><label>Bandeira (cartão)</label><input type="text" id="cf_bandeira" value="${esc(it.bandeira)}"></div><div class="fld"><label>Dia de fechamento</label><input type="number" id="cf_fech" min="1" max="31" value="${it.dia_fechamento||''}"></div><div class="fld"><label>Dia de pagamento</label><input type="number" id="cf_pag" min="1" max="31" value="${it.dia_pagamento||''}"></div></div>`;
   if(CAD_SUB==='regras')return `<div class="form-grid"><div class="fld full"><label>Palavra-chave (aparece na descrição do lançamento)</label><input type="text" id="cf_palavra" value="${esc(it.palavra)}" placeholder="ex.: uber, ifood, posto, cemig"></div><div class="fld full"><label>Associar à conta</label><select id="cf_conta">${contaOptionsGrouped(it.conta_id)}</select></div><div class="hint full">Na importação, se a descrição contiver esta palavra, o lançamento é associado automaticamente a esta conta.</div></div>`;
   if(CAD_SUB==='empresas')return `<div class="form-grid"><div class="fld full"><label>Nome da empresa</label><input type="text" id="cf_nome" value="${esc(it.nome)}"></div><div class="fld"><label>CNPJ</label><input type="text" id="cf_cnpj" value="${esc(it.cnpj)}"></div><div class="fld"><label>Ativa</label><select id="cf_ativo"><option value="true" ${it.ativo!==false?'selected':''}>Sim</option><option value="false" ${it.ativo===false?'selected':''}>Não</option></select></div></div>`;
-  return `<div class="form-grid"><div class="fld full"><label>Nome</label><input type="text" id="cf_nome" value="${esc(it.nome)}"></div><div class="fld"><label>E-mail</label><input type="text" id="cf_email" value="${esc(it.email)}" ${it.auth_uid?'readonly':''}></div><div class="fld"><label>Celular</label><input type="text" id="cf_celular" value="${esc(it.celular)}"></div><div class="fld full"><label>Empresa (libera o acesso)</label><select id="cf_empresa_id">${empresaOptions(it.empresa_id)}</select></div><div class="fld"><label>Tipo / permissão</label><select id="cf_tipo">${['superadmin','admin','operador','visualizador'].map(t=>`<option ${it.tipo===t?'selected':''}>${t}</option>`).join('')}</select></div><div class="fld"><label>Ativo</label><select id="cf_ativo"><option value="true" ${it.ativo===true?'selected':''}>Sim</option><option value="false" ${it.ativo!==true?'selected':''}>Não</option></select></div><div class="hint full">Para <b>liberar</b> um usuário: escolha a <b>Empresa</b>, ajuste o <b>Tipo</b> e marque <b>Ativo = Sim</b>. O login (e-mail/senha) é criado pelo próprio usuário no auto-cadastro.</div></div>`;
+  return `<div class="form-grid"><div class="fld full"><label>Nome</label><input type="text" id="cf_nome" value="${esc(it.nome)}"></div><div class="fld"><label>E-mail</label><input type="text" id="cf_email" value="${esc(it.email)}" ${it.auth_uid?'readonly':''}></div><div class="fld"><label>Celular</label><input type="text" id="cf_celular" value="${esc(it.celular)}"></div><div class="fld full"><label>Empresa (libera o acesso)</label><select id="cf_empresa_id">${empresaOptions(it.empresa_id)}</select></div><div class="fld"><label>Tipo / permissão</label><select id="cf_tipo">${['superadmin','admin','operador'].concat(it.tipo==='visualizador'?['visualizador']:[]).map(t=>`<option value="${t}" ${it.tipo===t?'selected':''}>${esc(ROLE_LABEL[t]||t)}</option>`).join('')}</select></div><div class="fld"><label>Ativo</label><select id="cf_ativo"><option value="true" ${it.ativo===true?'selected':''}>Sim</option><option value="false" ${it.ativo!==true?'selected':''}>Não</option></select></div><div class="hint full">Para <b>liberar</b> um usuário: escolha a <b>Empresa</b>, ajuste o <b>Tipo</b> e marque <b>Ativo = Sim</b>. O login (e-mail/senha) é criado pelo próprio usuário no auto-cadastro.</div></div>`;
 }
 function abrirFormCad(it){ const isEdit=!!(it&&it.id);
   openModal((isEdit?'Editar ':'Novo ')+CAD_DEF[CAD_SUB].title.replace(/s$/,'').toLowerCase(),formCad(it),()=>salvarCad(it));
@@ -2248,7 +2257,7 @@ async function salvarCad(it){
 function formNovoUsuario(){
   const isSuper = AUTH_PROFILE && AUTH_PROFILE.tipo==='superadmin';
   const empSel = isSuper ? `<div class="fld full"><label>Empresa</label><select id="nu_empresa">${empresaOptions(AUTH_PROFILE&&AUTH_PROFILE.empresa_id)}</select></div>` : '';
-  const tipos = isSuper ? ['admin','operador','visualizador','superadmin'] : ['admin','operador','visualizador'];
+  const tipos = isSuper ? ['operador','admin','superadmin'] : ['operador','admin'];
   return `<div class="form-grid">
     <div class="fld full"><label>Nome</label><input type="text" id="nu_nome"></div>
     <div class="fld full"><label>E-mail (será o login)</label><input type="email" id="nu_email"></div>
@@ -2340,6 +2349,7 @@ function wireGestao(){
   $('#btnImport').onclick=()=>$('#fileImp').click();
   $('#fileImp').addEventListener('change',importFile);
   $('#btnDelFut').onclick=excluirFuturos;
+  if($('#btnPermTela')) $('#btnPermTela').onclick=()=>{ const rota='/config?aba=usuarios', f=$('#erpFrame'); if(f&&f.getAttribute('src')) f.setAttribute('src',erpBase()+rota); abrirErp(rota,null); };
   $('#btnDelImport')&&($('#btnDelImport').onclick=excluirImportacao);
   $('#lancTbl').addEventListener('click',lancTblClick);
   $('#lancTbl').addEventListener('change',e=>{ if(e.target.id==='lancSelAll'){ const rows=filtroLanc(); rows.forEach(l=>{ if(e.target.checked)LANC_SEL.add(l.id); else LANC_SEL.delete(l.id); }); renderLanc(); } else if(e.target.classList&&e.target.classList.contains('lancSel')){ const id=+e.target.dataset.id; if(e.target.checked)LANC_SEL.add(id); else LANC_SEL.delete(id); renderLanc(); } });
