@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-07a)</title>
+<title>FCAH — Controle Financeiro (v2026-10-08a)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -281,7 +281,7 @@ body.perm-no-del-cad #v-cad [data-act="del"]{ display:none !important; }
     <button type="button" class="nav-topico"><span>Cadastros</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
     <a data-v="cad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20.5c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5M16.5 11a3 3 0 0 0 0-6M21.5 20.5c0-2.8-1.7-5.2-4.2-6.2"/></svg><span>Cadastros e usuários</span></a>
   </div>
-  <div class="nav-foot" id="navFoot">v2026-10-07a · base FCAH</div>
+  <div class="nav-foot" id="navFoot">v2026-10-08a · base FCAH</div>
 </nav>
 <main class="content">
 
@@ -1072,8 +1072,10 @@ function computePerm(tipo,mp){
   PERM.cad      = nivelTela('fin.cadastros')>=3;
   PERM.lanc     = nivelTela('fin.lancamentos')>=3;
   PERM.fin = PERM.admin || Object.values(VIEW_TELA).some(t=>nivelTela(t)>=1);
-  PERM.mat = PERM.matAdmin || Object.keys(PERM.niv).some(k=>k.indexOf('mat.')===0 && PERM.niv[k]>0);
+  // Materiais: o servidor olha TODAS as empresas do usuário (as permissões podem estar em outra empresa)
+  PERM.mat = !!mp.mat || PERM.matAdmin || Object.keys(PERM.niv).some(k=>k.indexOf('mat.')===0 && PERM.niv[k]>0);
 }
+function show2(el,on){ if(el) el.style.display=on?'':'none'; }
 function applyPerms(){
   const b=document.body, n=nivelTela, show=(el,on)=>{ if(el) el.style.display=on?'':'none'; };
   b.classList.toggle('perm-no-lanc', n('fin.lancamentos')<3); b.classList.toggle('perm-no-del-lanc', n('fin.lancamentos')<4); b.classList.toggle('perm-no-rel-lanc', n('fin.lancamentos')<2);
@@ -1115,7 +1117,8 @@ async function afterLogin(user){
   computePerm(prof.tipo, await T(loadPerms(),'ler permissões')); applyPerms();
   showUserBadge(prof); buildEmpSwitch();
   // abre na 1ª tela permitida (ou direto no Materiais, se não tiver nada no Financeiro)
-  if(!PERM.fin){ if(PERM.mat) abrirErp('/',null); else toast('Seu usuário ainda não tem telas liberadas. Fale com o administrador.'); }
+  // sem nada no Financeiro: entra direto no Materiais (o próprio Materiais avisa se também não houver telas liberadas)
+  if(!PERM.fin){ show2(document.querySelector('.modswitch [data-mod="mat"]'), true); abrirErp('/',null); }
   else if(nivelTela('fin.lancamentos')<1) switchView(viewInicial());
 }
 // seletor de empresa (só superadmin): troca a empresa em visualização
