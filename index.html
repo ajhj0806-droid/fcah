@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-08b)</title>
+<title>FCAH — Controle Financeiro (v2026-10-08c)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -281,7 +281,7 @@ body.perm-no-del-cad #v-cad [data-act="del"]{ display:none !important; }
     <button type="button" class="nav-topico"><span>Cadastros</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
     <a data-v="cad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20.5c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5M16.5 11a3 3 0 0 0 0-6M21.5 20.5c0-2.8-1.7-5.2-4.2-6.2"/></svg><span>Cadastros e usuários</span></a>
   </div>
-  <div class="nav-foot" id="navFoot">v2026-10-08b · base FCAH</div>
+  <div class="nav-foot" id="navFoot">v2026-10-08c · base FCAH</div>
 </nav>
 <main class="content">
 
@@ -2237,7 +2237,7 @@ function formCad(it){ it=it||{};
   if(CAD_SUB==='meios')return `<div class="form-grid"><div class="fld full"><label>Nome</label><input type="text" id="cf_nome" value="${esc(it.nome)}"></div><div class="fld"><label>Tipo</label><select id="cf_tipo">${['Pix','Dinheiro','Boleto','Transferência','Débito','Cartão de Crédito'].map(t=>`<option ${it.tipo===t?'selected':''}>${t}</option>`).join('')}</select></div><div class="fld"><label>Bandeira (cartão)</label><input type="text" id="cf_bandeira" value="${esc(it.bandeira)}"></div><div class="fld"><label>Dia de fechamento</label><input type="number" id="cf_fech" min="1" max="31" value="${it.dia_fechamento||''}"></div><div class="fld"><label>Dia de pagamento</label><input type="number" id="cf_pag" min="1" max="31" value="${it.dia_pagamento||''}"></div></div>`;
   if(CAD_SUB==='regras')return `<div class="form-grid"><div class="fld full"><label>Palavra-chave (aparece na descrição do lançamento)</label><input type="text" id="cf_palavra" value="${esc(it.palavra)}" placeholder="ex.: uber, ifood, posto, cemig"></div><div class="fld full"><label>Associar à conta</label><select id="cf_conta">${contaOptionsGrouped(it.conta_id)}</select></div><div class="hint full">Na importação, se a descrição contiver esta palavra, o lançamento é associado automaticamente a esta conta.</div></div>`;
   if(CAD_SUB==='empresas')return `<div class="form-grid"><div class="fld full"><label>Nome da empresa</label><input type="text" id="cf_nome" value="${esc(it.nome)}"></div><div class="fld"><label>CNPJ</label><input type="text" id="cf_cnpj" value="${esc(it.cnpj)}"></div><div class="fld"><label>Ativa</label><select id="cf_ativo"><option value="true" ${it.ativo!==false?'selected':''}>Sim</option><option value="false" ${it.ativo===false?'selected':''}>Não</option></select></div></div>`;
-  return `<div class="form-grid"><div class="fld full"><label>Nome</label><input type="text" id="cf_nome" value="${esc(it.nome)}"></div><div class="fld"><label>E-mail</label><input type="text" id="cf_email" value="${esc(it.email)}" ${it.auth_uid?'readonly':''}></div><div class="fld"><label>Celular</label><input type="text" id="cf_celular" value="${esc(it.celular)}"></div><div class="fld full"><label>Empresa (libera o acesso)</label><select id="cf_empresa_id">${empresaOptions(it.empresa_id)}</select></div><div class="fld"><label>Tipo / permissão</label><select id="cf_tipo">${['superadmin','admin','operador'].concat(it.tipo==='visualizador'?['visualizador']:[]).map(t=>`<option value="${t}" ${it.tipo===t?'selected':''}>${esc(ROLE_LABEL[t]||t)}</option>`).join('')}</select></div><div class="fld"><label>Ativo</label><select id="cf_ativo"><option value="true" ${it.ativo===true?'selected':''}>Sim</option><option value="false" ${it.ativo!==true?'selected':''}>Não</option></select></div><div class="hint full">Para <b>liberar</b> um usuário: escolha a <b>Empresa</b>, ajuste o <b>Tipo</b> e marque <b>Ativo = Sim</b>. O login (e-mail/senha) é criado pelo próprio usuário no auto-cadastro.</div></div>`;
+  return `<div class="form-grid"><div class="fld full"><label>Nome</label><input type="text" id="cf_nome" value="${esc(it.nome)}"></div><div class="fld"><label>E-mail</label><input type="text" id="cf_email" value="${esc(it.email)}" ${it.auth_uid?'readonly':''}></div><div class="fld"><label>Celular</label><input type="text" id="cf_celular" value="${esc(it.celular)}"></div>${faixaEmpresa('cf_faixa', it.empresa_id?empresaNome(it.empresa_id):'')}<div class="fld full"><label>Empresa (libera o acesso)</label><select id="cf_empresa_id" ${(AUTH_PROFILE&&AUTH_PROFILE.tipo==='superadmin')&&!(it.empresa_id&&it.auth_uid)?'':'disabled'} onchange="const n=this.options[this.selectedIndex].text;document.querySelector('#cf_faixa .faixaEmpNome').textContent='🏢 '+n">${empresaOptions(it.empresa_id||(AUTH_PROFILE&&AUTH_PROFILE.tipo!=='superadmin'?AUTH_PROFILE.empresa_id:null))}</select></div><div class="fld"><label>Tipo / permissão</label><select id="cf_tipo">${['superadmin','admin','operador'].concat(it.tipo==='visualizador'?['visualizador']:[]).map(t=>`<option value="${t}" ${it.tipo===t?'selected':''}>${esc(ROLE_LABEL[t]||t)}</option>`).join('')}</select></div><div class="fld"><label>Ativo</label><select id="cf_ativo"><option value="true" ${it.ativo===true?'selected':''}>Sim</option><option value="false" ${it.ativo!==true?'selected':''}>Não</option></select></div><div class="hint full">A empresa do usuário é definida uma vez só. As telas que ele pode usar são marcadas em <b>🔐 Permissões por tela</b>.</div></div>`;
 }
 function abrirFormCad(it){ const isEdit=!!(it&&it.id);
   openModal((isEdit?'Editar ':'Novo ')+CAD_DEF[CAD_SUB].title.replace(/s$/,'').toLowerCase(),formCad(it),()=>salvarCad(it));
@@ -2249,7 +2249,10 @@ async function salvarCad(it){
   else if(CAD_SUB==='meios'){ payload={nome:$('#cf_nome').value.trim(),tipo:$('#cf_tipo').value,bandeira:$('#cf_bandeira').value.trim()||null,dia_fechamento:+$('#cf_fech').value||null,dia_pagamento:+$('#cf_pag').value||null}; }
   else if(CAD_SUB==='regras'){ payload={palavra:$('#cf_palavra').value.trim().toLowerCase(),conta_id:+$('#cf_conta').value||null}; if(!payload.palavra){toast('Informe a palavra-chave');return false;} if(!payload.conta_id){toast('Escolha a conta');return false;} }
   else if(CAD_SUB==='empresas'){ payload={nome:$('#cf_nome').value.trim(),cnpj:$('#cf_cnpj').value.trim()||null,ativo:$('#cf_ativo').value==='true'}; }
-  else { payload={nome:$('#cf_nome').value.trim(),email:$('#cf_email').value.trim()||null,celular:$('#cf_celular').value.trim()||null,empresa_id:+$('#cf_empresa_id').value||null,tipo:$('#cf_tipo').value,ativo:$('#cf_ativo').value==='true'}; }
+  else { payload={nome:$('#cf_nome').value.trim(),email:$('#cf_email').value.trim()||null,celular:$('#cf_celular').value.trim()||null,empresa_id:+$('#cf_empresa_id').value||null,tipo:$('#cf_tipo').value,ativo:$('#cf_ativo').value==='true'};
+    // associar um usuário a uma empresa: confirma com o nome da empresa (depois não muda mais)
+    if(payload.empresa_id && (!it || it.empresa_id!==payload.empresa_id)){ const en=empresaNome(payload.empresa_id);
+      if(!confirm('Associar '+(payload.email||payload.nome)+' à empresa '+en+'?\n\nEle terá acesso SOMENTE aos dados da '+en+' e não poderá ser associado a outra empresa.')) return false; } }
   if(CAD_SUB!=='regras' && !payload.nome){toast('Informe o nome');return false;}
   let error;
   if(it&&it.id){ ({error}=await SB.from(def.table).update(payload).eq('id',it.id)); }
@@ -2257,14 +2260,22 @@ async function salvarCad(it){
   if(error){toast('Erro: '+error.message);return false;}
   await loadGestao();fillGestaoSelects();renderCad();renderLanc();renderCaixaGer();toast('Salvo ✓');return true;
 }
+/* ISOLAMENTO: o usuário pertence a UMA empresa só — a tela deixa a empresa bem à vista no cadastro */
+function faixaEmpresa(id, nomeEmp){ return `<div class="fld full" id="${id}" style="border:2px solid var(--amber,#d97706);background:rgba(245,158,11,.12);border-radius:10px;padding:10px 12px;line-height:1.45">
+  <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.8">Empresa deste usuário</div>
+  <div class="faixaEmpNome" style="font-size:20px;font-weight:800;margin:2px 0">🏢 ${esc(nomeEmp||'— nenhuma —')}</div>
+  <div class="small">Ele acessará <b>SOMENTE</b> os dados desta empresa. Por segurança, depois de associado <b>não poderá</b> ser ligado a outra empresa (para outra empresa, crie outro login).</div></div>`; }
 function formNovoUsuario(){
   const isSuper = AUTH_PROFILE && AUTH_PROFILE.tipo==='superadmin';
-  const empSel = isSuper ? `<div class="fld full"><label>Empresa</label><select id="nu_empresa">${empresaOptions(AUTH_PROFILE&&AUTH_PROFILE.empresa_id)}</select></div>` : '';
+  // superadmin escolhe (padrão = empresa EM USO na tela); admin cria sempre na própria empresa
+  const empSel = isSuper ? `<div class="fld full"><label>Empresa</label><select id="nu_empresa" onchange="const n=this.options[this.selectedIndex].text;document.querySelector('#nu_faixa .faixaEmpNome').textContent='🏢 '+n">${empresaOptions(authEmp())}</select></div>` : '';
+  const empNome = empresaNome(isSuper ? authEmp() : (AUTH_PROFILE&&AUTH_PROFILE.empresa_id));
   const tipos = isSuper ? ['operador','admin','superadmin'] : ['operador','admin'];
   return `<div class="form-grid">
+    ${faixaEmpresa('nu_faixa', empNome)}
+    ${empSel}
     <div class="fld full"><label>Nome</label><input type="text" id="nu_nome"></div>
     <div class="fld full"><label>E-mail (será o login)</label><input type="email" id="nu_email"></div>
-    ${empSel}
     <div class="fld"><label>Tipo / permissão</label><select id="nu_tipo">${tipos.map(t=>`<option value="${t}">${esc(ROLE_LABEL[t]||t)}</option>`).join('')}</select></div>
     <div class="fld"><label>Senha provisória (opcional)</label><input type="text" id="nu_senha" placeholder="vazio = gerar automática"></div>
     <div class="hint full">O login é criado <b>já ativo</b>. Anote a senha provisória e repasse à pessoa — ela pode trocá-la depois.</div>
@@ -2276,6 +2287,9 @@ async function salvarNovoUsuario(){
   const tipo=$('#nu_tipo').value, senha=($('#nu_senha')&&$('#nu_senha').value)||'';
   const empEl=$('#nu_empresa'); const empresa_id = empEl ? (+empEl.value||null) : null;
   if(!nome||!email){ toast('Informe nome e e-mail'); return false; }
+  const empNome = empEl ? empEl.options[empEl.selectedIndex].text : empresaNome(AUTH_PROFILE&&AUTH_PROFILE.empresa_id);
+  if(!empresa_id && empEl){ toast('Escolha a empresa do usuário'); return false; }
+  if(!confirm('Criar o usuário '+email+' na empresa '+empNome+'?\n\nEle terá acesso SOMENTE aos dados da '+empNome+' e não poderá ser associado a outra empresa.')) return false;
   const sv=$('#modalSave'); if(sv) sv.textContent='Criando…';
   let data,error;
   try{ ({data,error}=await SB.functions.invoke('criar_usuario',{body:{nome,email,tipo,senha,empresa_id}})); }
