@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-08a)</title>
+<title>FCAH — Controle Financeiro (v2026-10-08b)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -281,7 +281,7 @@ body.perm-no-del-cad #v-cad [data-act="del"]{ display:none !important; }
     <button type="button" class="nav-topico"><span>Cadastros</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
     <a data-v="cad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20.5c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5M16.5 11a3 3 0 0 0 0-6M21.5 20.5c0-2.8-1.7-5.2-4.2-6.2"/></svg><span>Cadastros e usuários</span></a>
   </div>
-  <div class="nav-foot" id="navFoot">v2026-10-08a · base FCAH</div>
+  <div class="nav-foot" id="navFoot">v2026-10-08b · base FCAH</div>
 </nav>
 <main class="content">
 
@@ -2352,7 +2352,9 @@ function wireGestao(){
   $('#btnImport').onclick=()=>$('#fileImp').click();
   $('#fileImp').addEventListener('change',importFile);
   $('#btnDelFut').onclick=excluirFuturos;
-  if($('#btnPermTela')) $('#btnPermTela').onclick=()=>{ const rota='/config?aba=usuarios', f=$('#erpFrame'); if(f&&f.getAttribute('src')) f.setAttribute('src',erpBase()+rota); abrirErp(rota,null); };
+  // abre a tela de permissões do Materiais JÁ na empresa que está em uso aqui no Financeiro
+  if($('#btnPermTela')) $('#btnPermTela').onclick=async()=>{ let emp=''; try{ const r=await SB.from('empresa').select('id').eq('fcah_empresa_id',authEmp()).maybeSingle(); if(r&&r.data) emp='&empresa='+r.data.id; }catch(_){ }
+    const rota='/config?aba=usuarios'+emp, f=$('#erpFrame'); if(f&&f.getAttribute('src')) f.setAttribute('src',erpBase()+rota); abrirErp(rota,null); };
   $('#btnDelImport')&&($('#btnDelImport').onclick=excluirImportacao);
   $('#lancTbl').addEventListener('click',lancTblClick);
   $('#lancTbl').addEventListener('change',e=>{ if(e.target.id==='lancSelAll'){ const rows=filtroLanc(); rows.forEach(l=>{ if(e.target.checked)LANC_SEL.add(l.id); else LANC_SEL.delete(l.id); }); renderLanc(); } else if(e.target.classList&&e.target.classList.contains('lancSel')){ const id=+e.target.dataset.id; if(e.target.checked)LANC_SEL.add(id); else LANC_SEL.delete(id); renderLanc(); } });
