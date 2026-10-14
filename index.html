@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-08c)</title>
+<title>FCAH — Controle Financeiro (v2026-10-14a)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -209,6 +209,22 @@ body.perm-no-rel-fluxo #cgExport,
 body.perm-no-simlan #slGerar, body.perm-no-simlan #v-simlan .acts, body.perm-no-simlan [data-simact],
 body.perm-no-cad #btnNovoCad, body.perm-no-cad #btnRegrasView, body.perm-no-cad #btnRegrasClean, body.perm-no-cad #v-cad .acts,
 body.perm-no-del-cad #v-cad [data-act="del"]{ display:none !important; }
+/* Análise de Impactos */
+.imp-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px}
+@media (max-width:1000px){.imp-grid{grid-template-columns:1fr}}
+.imp-prem{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--panel2);font-size:12.5px}
+.imp-prem label{flex:1;display:flex;gap:8px;align-items:center;cursor:pointer}
+.imp-prem.off{opacity:.5}.imp-prem.off span{text-decoration:line-through}
+.imp-form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:10px;padding:10px;border:1px dashed var(--line);border-radius:10px}
+.imp-form .fld input,.imp-form .fld select{width:100%}
+.imp-form .fld{min-width:110px;flex:1}.imp-form .imp-wide{flex-basis:100%}
+.imp-resumo{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px;font-size:13px;line-height:1.45}
+.imp-resumo .imp-alerta{color:var(--red)}.imp-resumo .imp-ok{color:var(--green)}
+.imp-svg{width:100%;height:auto;display:block}.imp-ax{font-size:10.5px;fill:var(--txt2)}
+.imp-leg{display:inline-block;width:22px;border-top:3px solid;vertical-align:middle;margin-right:4px}
+.imp-tbl td,.imp-tbl th{white-space:nowrap}
+.imp-tbl td.imp-neg{color:var(--red);font-weight:700;background:rgba(184,57,42,.08)}
+body.perm-no-impactos #impSalvar, body.perm-no-impactos #impSalvarComo, body.perm-no-del-impactos #impExcluir{ display:none !important; }
 /* Dashboard */
 #v-dash .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:900px){#v-dash .dgrid{grid-template-columns:1fr}}
@@ -276,12 +292,13 @@ body.perm-no-del-cad #v-cad [data-act="del"]{ display:none !important; }
   <div class="nav-group" data-g="sim">
     <button type="button" class="nav-topico"><span>Simulação</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
     <a data-v="simlan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 7 21h10a2 2 0 0 0 1.8-3L14 9V3"/></svg><span>Simulador de Lançamentos</span></a>
+    <a data-v="impactos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/><path d="M17 7h3v3"/></svg><span>Análise de Impactos</span></a>
   </div>
   <div class="nav-group" data-g="cad">
     <button type="button" class="nav-topico"><span>Cadastros</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
     <a data-v="cad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20.5c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5M16.5 11a3 3 0 0 0 0-6M21.5 20.5c0-2.8-1.7-5.2-4.2-6.2"/></svg><span>Cadastros e usuários</span></a>
   </div>
-  <div class="nav-foot" id="navFoot">v2026-10-08c · base FCAH</div>
+  <div class="nav-foot" id="navFoot">v2026-10-14a · base FCAH</div>
 </nav>
 <main class="content">
 
@@ -292,6 +309,29 @@ body.perm-no-del-cad #v-cad [data-act="del"]{ display:none !important; }
 </section>
 
 <!-- ============ SIMULADOR DE LANÇAMENTOS ============ -->
+<!-- ============ ANÁLISE DE IMPACTOS ============ -->
+<section class="view" id="v-impactos">
+  <div class="panel" style="margin-bottom:14px">
+    <div class="row" style="align-items:center;gap:10px;margin-bottom:10px"><div style="font-size:17px;font-weight:800">📈 Análise de Impactos</div><div class="muted small">“e se…?” — aplica premissas sobre o Fluxo Gerencial e mostra sobra ou falta de caixa. <b>Nada é gravado nos lançamentos</b>: desligar ou remover a premissa desfaz o impacto.</div></div>
+    <div class="row" style="gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div class="fld"><label>Cenário</label><select id="impCen" style="min-width:220px"></select></div>
+      <button class="btn sec" id="impNovo" type="button">Novo</button>
+      <button class="btn" id="impSalvar" type="button">💾 Salvar cenário</button>
+      <button class="btn ghost" id="impSalvarComo" type="button">Salvar como…</button>
+      <button class="btn ghost" id="impExcluir" type="button" title="Excluir o cenário salvo (não mexe em lançamentos)">🗑</button>
+      <div class="grow"></div>
+      <div class="fld"><label>Início da análise</label><div style="display:flex;gap:4px"><select id="impIniM"></select><select id="impIniY"></select></div></div>
+      <div class="fld"><label>Horizonte (meses)</label><select id="impN"><option>6</option><option>12</option><option>18</option><option>24</option><option>36</option></select></div>
+      <label class="small" style="display:flex;gap:6px;align-items:center;padding-bottom:8px"><input type="checkbox" id="impSim" checked> incluir lançamentos 🧪 simulados</label>
+    </div>
+  </div>
+  <div class="imp-grid" style="margin-bottom:14px">
+    <div class="panel"><h3>Premissas do cenário</h3><p class="desc">Marque/desmarque para comparar. Cada premissa vale só nesta análise.</p><div id="impLista"></div><div id="impForm"></div></div>
+    <div class="panel"><h3>Resumo da análise</h3><p class="desc">Sobra ou falta de caixa, necessidade de capital e outros indicadores do cenário.</p><div id="impResumo"></div></div>
+  </div>
+  <div id="impOut"></div>
+</section>
+
 <section class="view" id="v-simlan">
   <div class="panel" style="margin-bottom:14px">
     <div class="row" style="align-items:center;gap:10px;margin-bottom:8px"><div style="font-size:17px;font-weight:800">🧪 Simulador de Lançamentos</div><div class="muted small">crie cenários futuros a partir de um mês real — cada conta você decide como tratar</div></div>
@@ -494,7 +534,8 @@ initTheme();
 
 /* menu lateral (padrão SGERP): troca de view + grupos colapsáveis + botão mobile */
 function setMod(m){ $$('.modswitch button[data-mod]').forEach(b=>b.classList.toggle('active', b.dataset.mod===m)); const l=$('#modLabel'); if(l)l.textContent=(m==='mat'?'MATERIAIS':'FINANCEIRO'); }
-function switchView(v){ document.body.classList.remove('erp-full'); setMod('fin'); $$('#sidebar a[data-v]').forEach(x=>x.classList.toggle('active',x.dataset.v===v)); $$('.view').forEach(s=>s.classList.remove('active')); const el=$('#v-'+v); if(el)el.classList.add('active');
+function switchView(v){ if(v==='impactos'){ wireImpactos(); impCarregarCens().then(()=>{ if(typeof renderImpactos==='function') renderImpactos(); }); }
+  document.body.classList.remove('erp-full'); setMod('fin'); $$('#sidebar a[data-v]').forEach(x=>x.classList.toggle('active',x.dataset.v===v)); $$('.view').forEach(s=>s.classList.remove('active')); const el=$('#v-'+v); if(el)el.classList.add('active');
   const a=$('#sidebar a[data-v="'+v+'"]'); $$('#sidebar .nav-topico').forEach(t=>t.classList.remove('atual')); if(a){ const grp=a.closest('.nav-group'); const t=grp&&grp.querySelector('.nav-topico'); if(t)t.classList.add('atual'); }
   renderAll(); }
 function marcarMenu(a){ $$('#sidebar a').forEach(x=>x.classList.remove('active')); if(a)a.classList.add('active');
@@ -1058,7 +1099,7 @@ function hideAuthGate(){ const g=$('#authGate'); if(g){ g.hidden=true; g.style.d
 /* ---- Papéis de acesso (permissões por tipo de usuário) ---- */
 const PERM={ver:true,lanc:false,cad:false,usuarios:false,empresas:false,admin:false,matAdmin:false,fin:true,mat:true,niv:{}};
 // cada tela do Financeiro ↔ código no catálogo de permissões (tabela tela; configurado em Materiais › Administração › Usuários e permissões)
-const VIEW_TELA={lanc:'fin.lancamentos',caixager:'fin.fluxo',dash:'fin.dashboard',simlan:'fin.simlan',cad:'fin.cadastros'};
+const VIEW_TELA={lanc:'fin.lancamentos',caixager:'fin.fluxo',dash:'fin.dashboard',simlan:'fin.simlan',impactos:'fin.impactos',cad:'fin.cadastros'};
 function nivelTela(t){ return PERM.admin?4:(+PERM.niv[t]||0); }
 function viewInicial(){ return Object.keys(VIEW_TELA).find(v=>nivelTela(VIEW_TELA[v])>=1)||'lanc'; }
 async function loadPerms(){ try{ const r=await SB.rpc('minhas_permissoes_fcah'); if(r&&!r.error&&r.data) return r.data; }catch(_){ } return {}; }
@@ -1081,6 +1122,7 @@ function applyPerms(){
   b.classList.toggle('perm-no-lanc', n('fin.lancamentos')<3); b.classList.toggle('perm-no-del-lanc', n('fin.lancamentos')<4); b.classList.toggle('perm-no-rel-lanc', n('fin.lancamentos')<2);
   b.classList.toggle('perm-no-fluxo', n('fin.fluxo')<3); b.classList.toggle('perm-no-del-fluxo', n('fin.fluxo')<4); b.classList.toggle('perm-no-rel-fluxo', n('fin.fluxo')<2);
   b.classList.toggle('perm-no-simlan', n('fin.simlan')<3);
+  b.classList.toggle('perm-no-impactos', n('fin.impactos')<3); b.classList.toggle('perm-no-del-impactos', n('fin.impactos')<4);
   b.classList.toggle('perm-no-cad', n('fin.cadastros')<3); b.classList.toggle('perm-no-del-cad', n('fin.cadastros')<4);
   // menu: só as telas com Acesso; o grupo some se ficar vazio
   Object.keys(VIEW_TELA).forEach(v=>show(document.querySelector('#sidebar a[data-v="'+v+'"]'), n(VIEW_TELA[v])>=1));
@@ -2502,7 +2544,213 @@ function renderDash(){
     +`<div class="dgrid">${panelAlert}${panelDup}</div>`
     +`<div class="dgrid">${panelTop}${panelQual}</div>`;
 }
-function renderAll(){renderSim();renderGestao();renderSimLan();renderDash();}
+/* ===================== ANÁLISE DE IMPACTOS — "e se…?" sobre o Fluxo Gerencial =====================
+   Aplica premissas (variação %, valor fixo, adiar, empréstimo, retirada, aporte) sobre os lançamentos do fluxo
+   e compara BASE × CENÁRIO mês a mês (resultado e saldo acumulado com o saldo anterior, como no Fluxo).
+   Nada é gravado nos lançamentos: desligar ou remover a premissa desfaz o impacto. Cenários podem ser salvos. */
+const IMP={ini:null,n:12,incSim:true,prem:[],cenId:null,nome:'',seq:1,cens:[],tipoForm:'cresce'};
+const impAbs=(y,m)=>y*12+m, impYM=a=>({y:Math.floor(a/12),m:((a%12)+12)%12});
+const impLbl=a=>{const p=impYM(a);return MESES[p.m]+'/'+String(p.y).slice(2);};
+const impR=v=>(v<0?'−':'')+'R$ '+fmt.format(Math.abs(Math.round(v)));
+const impRs=v=>(v>0?'+':v<0?'−':'')+'R$ '+fmt.format(Math.abs(Math.round(v)));
+const IMP_TIPOS=[['cresce','Crescer X% numa conta/grupo'],['diminui','Diminuir X% numa conta/grupo'],['fixo','Valor mensal fixo numa conta'],['adiar','Adiar/antecipar valores de uma conta'],['emprestimo','Empréstimo (entrada + parcelas com juros)'],['retirada','Retirada mensal (saída de caixa)'],['aporte','Aporte / entrada extra mensal']];
+function impIni(){ if(IMP.ini==null){ const d=new Date(); IMP.ini=impAbs(d.getFullYear(),d.getMonth()); } return IMP.ini; }
+function impNat(cid){ const c=G.contas.find(x=>x.id===cid); const g=c&&G.grupos.find(x=>x.id===c.grupo_id); return g&&g.natureza==='Receita'?1:-1; }
+function impAlvoNome(a){ if(!a)return '—'; const id=+String(a).slice(1); if(String(a)[0]==='g'){const g=G.grupos.find(x=>x.id===id);return g?'grupo '+g.nome:'grupo removido';} const c=G.contas.find(x=>x.id===id); return c?c.nome:'conta removida'; }
+function impContasDoAlvo(a){ if(!a)return []; const id=+String(a).slice(1); return String(a)[0]==='g'?G.contas.filter(c=>c.grupo_id===id).map(c=>c.id):[id]; }
+const impPmt=(v,n,i)=>i>0? v*i/(1-Math.pow(1+i,-n)) : v/n;
+function impDesc(p){ const per=()=>`de ${impLbl(+p.de)} a ${impLbl(+p.ate)}`;
+  if(p.tipo==='pct') return `${impAlvoNome(p.alvo)}: ${+p.pct>=0?'crescer':'diminuir'} ${fmt1.format(Math.abs(+p.pct))}% ${per()}`;
+  if(p.tipo==='fixo') return `${impAlvoNome(p.alvo)}: valor fixo de ${impR(Math.abs(+p.valor))}/mês ${per()}`;
+  if(p.tipo==='adiar') return `${impAlvoNome(p.alvo)}: ${+p.meses>=0?'adiar':'antecipar'} ${Math.abs(+p.meses)} mês(es) os valores ${per()}`;
+  if(p.tipo==='emprestimo'){ const pm=impPmt(+p.valor,+p.parcelas,(+p.taxa||0)/100); return `Empréstimo de ${impR(+p.valor)} em ${impLbl(+p.mes)} · ${p.parcelas}x de ${impR(pm)} a ${fmt2.format(+p.taxa||0)}% a.m.${+p.carencia?` · carência ${p.carencia} mês(es)`:''}`; }
+  if(p.tipo==='retirada') return `Retirada de ${impR(Math.abs(+p.valor))}/mês ${per()}${p.desc?' · '+p.desc:''}`;
+  if(p.tipo==='aporte') return `Aporte de ${impR(Math.abs(+p.valor))}/mês ${per()}${p.desc?' · '+p.desc:''}`;
+  return '?'; }
+
+function impCalc(){
+  const ini=impIni(), n=IMP.n, fim=ini+n-1;
+  const contaById={}; G.contas.forEach(c=>contaById[c.id]=c);
+  const fora=l=>l.conta_id!=null&&contaById[l.conta_id]&&contaById[l.conta_id].fora_fluxo;
+  const L=G.lanc.filter(l=>l.data_pagamento&&!fora(l)&&(IMP.incSim||!l.simulado));
+  let saldo0=0; const base={};
+  const linha=k=>base[k]||(base[k]=new Array(n).fill(0));
+  L.forEach(l=>{ const a=impAbs(+String(l.data_pagamento).slice(0,4), +String(l.data_pagamento).slice(5,7)-1); const v=svLanc(l);
+    if(a<ini) saldo0+=v; else if(a<=fim) linha(l.conta_id!=null?'c'+l.conta_id:'semconta')[a-ini]+=v; });
+  const cen={}; Object.keys(base).forEach(k=>cen[k]=base[k].slice());
+  const extras=[], avisos=[], emprest=[];
+  const faixa=p=>[Math.max(+p.de,ini)-ini, Math.min(+p.ate,fim)-ini];
+  IMP.prem.filter(p=>p.ativo).forEach(p=>{
+    if(p.tipo==='pct'||p.tipo==='fixo'||p.tipo==='adiar'){
+      const [i0,i1]=faixa(p); if(i1<i0){ avisos.push('Fora do período analisado: '+impDesc(p)); return; }
+      impContasDoAlvo(p.alvo).forEach(cid=>{ const k='c'+cid; if(!base[k])base[k]=new Array(n).fill(0); const arr=cen[k]||(cen[k]=new Array(n).fill(0));
+        if(p.tipo==='pct'){ for(let i=i0;i<=i1;i++) arr[i]*=1+(+p.pct||0)/100; }
+        else if(p.tipo==='fixo'){ for(let i=i0;i<=i1;i++) arr[i]=impNat(cid)*Math.abs(+p.valor||0); }
+        else { const s=Math.round(+p.meses||0), mov=new Array(n).fill(0);
+          for(let i=i0;i<=i1;i++){ const v=arr[i]; arr[i]=0; const j=i+s; if(j>=0&&j<n) mov[j]+=v; else if(Math.abs(v)>=1) avisos.push(`${impAlvoNome(k)}: ${impR(v)} de ${impLbl(ini+i)} saiu do período ao ${s>=0?'adiar':'antecipar'}`); }
+          for(let i=0;i<n;i++) arr[i]+=mov[i]; }
+      });
+    } else if(p.tipo==='emprestimo'){
+      const V=Math.abs(+p.valor||0), N=Math.max(1,Math.round(+p.parcelas||1)), i=(+p.taxa||0)/100, car=Math.max(0,Math.round(+p.carencia||0));
+      const pm=impPmt(V,N,i), arr=new Array(n).fill(0), e=+p.mes-ini; let foraJan=0;
+      if(e>=0&&e<n) arr[e]+=V; else avisos.push('Entrada do empréstimo fora do período analisado.');
+      for(let k=1;k<=N;k++){ const j=e+car+k; if(j>=0&&j<n) arr[j]-=pm; else foraJan++; }
+      emprest.push({V,N,i,pm,foraJan,juros:pm*N-V,mes:+p.mes,car});
+      extras.push({k:'x'+p.id,nome:`Empréstimo ${impR(V)} (${N}x ${impR(pm)})`,arr});
+    } else if(p.tipo==='retirada'||p.tipo==='aporte'){
+      const [i0,i1]=faixa(p), arr=new Array(n).fill(0), s=p.tipo==='retirada'?-1:1;
+      for(let i=i0;i<=i1;i++) arr[i]=s*Math.abs(+p.valor||0);
+      extras.push({k:'x'+p.id,nome:(p.tipo==='retirada'?'Retirada':'Aporte')+(p.desc?' · '+p.desc:''),arr});
+    }
+  });
+  extras.forEach(x=>{ cen[x.k]=x.arr; base[x.k]=new Array(n).fill(0); });
+  const tot=M=>{ const rec=new Array(n).fill(0),desp=new Array(n).fill(0); Object.values(M).forEach(a=>a.forEach((v,i)=>{ if(v>=0)rec[i]+=v; else desp[i]+=v; })); return {rec,desp,res:rec.map((r,i)=>r+desp[i])}; };
+  const B=tot(base), C=tot(cen); const acc=res=>{ let s=saldo0; return res.map(v=>s+=v); };
+  B.saldo=acc(B.res); C.saldo=acc(C.res);
+  return {ini,n,saldo0,base,cen,extras,B,C,emprest,avisos};
+}
+function impMetr(S){ const n=S.res.length; let min=Infinity,imin=0; S.saldo.forEach((v,i)=>{ if(v<min){min=v;imin=i;} });
+  const rec=S.rec.reduce((a,b)=>a+b,0), desp=-S.desp.reduce((a,b)=>a+b,0), fim=S.saldo[n-1], despMed=desp/n;
+  return {rec,desp,res:rec-desp,fim,min,imin,neg:S.saldo.filter(v=>v<0).length,primNeg:S.saldo.findIndex(v=>v<0),necess:Math.max(0,-min),
+    despMed,folego:despMed>0&&fim>0?fim/despMed:null,cobertura:desp>0?rec/desp*100:null,mesesDeficit:S.res.filter(v=>v<0).length}; }
+
+function impNomeLinha(k,R){ if(k==='semconta')return '(lançamentos sem conta)'; if(k[0]==='x'){ const x=R.extras.find(e=>e.k===k); return x?x.nome:k; } return impAlvoNome(k); }
+
+function renderImpactos(){
+  if(!$('#v-impactos')) return;
+  impFillControles(); impRenderPremissas();
+  const out=$('#impOut'), res=$('#impResumo'); if(!out||!res) return;
+  if(!SB){ out.innerHTML=''; res.innerHTML='<div class="muted small">Conecte ao banco para analisar.</div>'; return; }
+  const R=impCalc(), b=impMetr(R.B), c=impMetr(R.C), ini=R.ini, L=i=>impLbl(ini+i);
+  const ativos=IMP.prem.filter(p=>p.ativo).length;
+  const k=(lbl,v,sub,cor)=>`<div class="kpi"><div class="bar" style="background:${cor||'var(--accent)'}"></div><div class="lbl">${lbl}</div><div class="val">${v}</div><div class="delta">${sub||''}</div></div>`;
+  const dlt=(x,y)=>{ const d=y-x; return Math.abs(d)<1?'<span class="muted">sem mudança</span>':`<span class="${d>0?'up':'down'}">${impRs(d)} vs base</span>`; };
+  // ---- resumo (análise) ----
+  const t=[];
+  t.push(`<li>Período de <b>${L(0)}</b> a <b>${L(R.n-1)}</b> · saldo anterior (antes de ${L(0)}): <b>${impR(R.saldo0)}</b>${IMP.incSim?'':' · sem os lançamentos 🧪 simulados'}.</li>`);
+  if(!ativos) t.push(`<li class="muted">Nenhuma premissa ativa — o cenário é igual à base. Adicione uma premissa ao lado.</li>`);
+  else t.push(`<li>O cenário muda o <b>resultado do período</b> em <b class="${c.res-b.res>=0?'up':'down'}">${impRs(c.res-b.res)}</b> (base ${impR(b.res)} → cenário ${impR(c.res)}) e o <b>saldo final</b> de ${impR(b.fim)} para <b>${impR(c.fim)}</b>.</li>`);
+  if(c.neg){ t.push(`<li class="imp-alerta">⚠ <b>Falta de caixa:</b> o saldo fica negativo em <b>${c.neg} mês(es)</b>, a partir de <b>${L(c.primNeg)}</b>. Pior momento: <b>${impR(c.min)}</b> em ${L(c.imin)} — <b>necessidade de capital de ${impR(c.necess)}</b>.</li>`);
+    const rest=R.n-c.primNeg; t.push(`<li>Para não faltar caixa: captar cerca de <b>${impR(c.necess)}</b> até ${L(c.primNeg)}, ou reduzir saídas em ~<b>${impR(c.necess/Math.max(1,c.imin-c.primNeg+1))}/mês</b> de ${L(c.primNeg)} a ${L(c.imin)}${rest>0?'':''}.</li>`); }
+  else t.push(`<li class="imp-ok">✓ <b>Sem falta de caixa:</b> o saldo fica positivo em todo o período. Menor saldo (folga mínima): <b>${impR(c.min)}</b> em ${L(c.imin)}.</li>`);
+  if(ativos&&b.neg&&!c.neg) t.push(`<li class="imp-ok">✓ O cenário <b>elimina</b> a falta de caixa da base (que ficava negativa em ${b.neg} mês(es), pior ${impR(b.min)} em ${L(b.imin)}).</li>`);
+  if(ativos&&!b.neg&&c.neg) t.push(`<li class="imp-alerta">⚠ Na base o caixa não faltava — é <b>este cenário</b> que cria a falta.</li>`);
+  if(c.mesesDeficit) t.push(`<li>${c.mesesDeficit} de ${R.n} mês(es) com <b>resultado mensal negativo</b> (saídas maiores que entradas).</li>`);
+  if(c.cobertura!=null) t.push(`<li>As entradas cobrem <b>${fmt1.format(c.cobertura)}%</b> das saídas no período (base ${b.cobertura!=null?fmt1.format(b.cobertura)+'%':'—'}).</li>`);
+  if(c.folego!=null) t.push(`<li><b>Fôlego:</b> com saídas médias de ${impR(c.despMed)}/mês, o saldo final cobre cerca de <b>${fmt1.format(c.folego)} mês(es)</b> de operação.</li>`);
+  R.emprest.forEach(e=>t.push(`<li><b>Empréstimo</b> de ${impR(e.V)}: ${e.N} parcelas de ${impR(e.pm)} (${fmt2.format(e.i*100)}% a.m.) — <b>juros totais ${impR(e.juros)}</b> (${fmt1.format(e.juros/e.V*100)}% do valor)${e.foraJan?` · ${e.foraJan} parcela(s) ficam depois do período analisado`:''}.</li>`));
+  // maiores impactos por conta
+  const imp=Object.keys(R.cen).map(kk=>{ const s0=(R.base[kk]||[]).reduce((a,v)=>a+v,0), s1=R.cen[kk].reduce((a,v)=>a+v,0); return {kk,s0,s1,d:s1-s0}; }).filter(x=>Math.abs(x.d)>=1).sort((x,y)=>Math.abs(y.d)-Math.abs(x.d));
+  if(imp.length) t.push(`<li>Maior impacto: <b>${esc(impNomeLinha(imp[0].kk,R))}</b> (${impRs(imp[0].d)} no período).</li>`);
+  R.avisos.forEach(a=>t.push(`<li class="muted small">ℹ ${esc(a)}</li>`));
+  res.innerHTML=`<ul class="imp-resumo">${t.join('')}</ul>`;
+
+  // ---- KPIs ----
+  let h=`<div class="kpis" style="margin-bottom:14px">
+    ${k('Resultado do período',impR(c.res),dlt(b.res,c.res),c.res>=0?'var(--green)':'var(--red)')}
+    ${k('Saldo final ('+L(R.n-1)+')',impR(c.fim),dlt(b.fim,c.fim),c.fim>=0?'var(--green)':'var(--red)')}
+    ${k('Menor saldo',impR(c.min),'em '+L(c.imin)+' · base '+impR(b.min),c.min>=0?'var(--green)':'var(--red)')}
+    ${k('Necessidade de caixa',c.necess?impR(c.necess):'—',c.necess?'para não ficar negativo':'caixa suficiente',c.necess?'var(--red)':'var(--green)')}
+    ${k('Meses com caixa negativo',String(c.neg),'base: '+b.neg,c.neg?'var(--red)':'var(--green)')}
+    ${k('Fôlego (meses)',c.folego!=null?fmt1.format(c.folego):'—','saldo final ÷ saídas médias','var(--amber)')}
+  </div>`;
+  // ---- gráfico do saldo acumulado ----
+  const W=900,H=230,P={l:70,r:16,t:16,b:30}, all=[...R.B.saldo,...R.C.saldo,0], mx=Math.max(...all), mn=Math.min(...all), sp=(mx-mn)||1;
+  const X=i=>P.l+(R.n===1?0:i*(W-P.l-P.r)/(R.n-1)), Y=v=>P.t+(mx-v)*(H-P.t-P.b)/sp;
+  const pl=a=>a.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  const ticks=[mx,(mx+mn)/2,mn].map(v=>`<text x="${P.l-6}" y="${Y(v)+4}" text-anchor="end" class="imp-ax">${impR(v)}</text>`).join('');
+  const xl=R.B.saldo.map((_,i)=>(R.n<=18||i%2===0)?`<text x="${X(i)}" y="${H-8}" text-anchor="middle" class="imp-ax">${L(i)}</text>`:'').join('');
+  const pts=R.C.saldo.map((v,i)=>`<circle cx="${X(i)}" cy="${Y(v)}" r="3.5" fill="${v<0?'var(--red)':'var(--accent)'}"><title>${L(i)} · cenário ${impR(v)} · base ${impR(R.B.saldo[i])}</title></circle>`).join('');
+  h+=`<div class="panel" style="margin-bottom:14px"><h3>Saldo de caixa acumulado — base × cenário</h3><p class="desc">Abaixo da linha vermelha = falta de caixa. Passe o mouse nos pontos.</p>
+    <svg viewBox="0 0 ${W} ${H}" class="imp-svg" role="img" aria-label="Saldo acumulado">
+      <line x1="${P.l}" x2="${W-P.r}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--red)" stroke-dasharray="4 4" stroke-width="1.2"/>
+      ${ticks}${xl}
+      <polyline points="${pl(R.B.saldo)}" fill="none" stroke="var(--txt3)" stroke-width="2" stroke-dasharray="6 4"/>
+      <polyline points="${pl(R.C.saldo)}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>${pts}
+    </svg><div class="small muted"><span class="imp-leg" style="border-color:var(--txt3);border-style:dashed"></span> base (sem premissas) &nbsp; <span class="imp-leg" style="border-color:var(--accent)"></span> cenário</div></div>`;
+  // ---- tabela mês a mês ----
+  h+=`<div class="panel" style="margin-bottom:14px"><h3>Mês a mês</h3><div class="tblwrap"><table class="imp-tbl"><thead><tr><th>Mês</th><th>Entradas (cen.)</th><th>Saídas (cen.)</th><th>Resultado base</th><th>Resultado cenário</th><th>Δ</th><th>Saldo base</th><th>Saldo cenário</th></tr></thead><tbody>`;
+  for(let i=0;i<R.n;i++){ const d=R.C.res[i]-R.B.res[i];
+    h+=`<tr><td>${L(i)}</td><td>${impR(R.C.rec[i])}</td><td>${impR(R.C.desp[i])}</td><td class="${R.B.res[i]<0?'down':''}">${impR(R.B.res[i])}</td><td class="${R.C.res[i]<0?'down':''}">${impR(R.C.res[i])}</td>
+      <td class="${Math.abs(d)<1?'muted':d>0?'up':'down'}">${Math.abs(d)<1?'—':impRs(d)}</td><td class="${R.B.saldo[i]<0?'imp-neg':''}">${impR(R.B.saldo[i])}</td><td class="${R.C.saldo[i]<0?'imp-neg':''}"><b>${impR(R.C.saldo[i])}</b></td></tr>`; }
+  h+=`<tr class="tot"><td>Total</td><td>${impR(c.rec)}</td><td>${impR(-c.desp)}</td><td>${impR(b.res)}</td><td>${impR(c.res)}</td><td class="${c.res-b.res>=0?'up':'down'}">${impRs(c.res-b.res)}</td><td>${impR(b.fim)}</td><td><b>${impR(c.fim)}</b></td></tr></tbody></table></div></div>`;
+  // ---- impacto por conta ----
+  h+=`<div class="panel"><h3>Impacto por conta</h3><p class="desc">Contas alteradas pelas premissas (total do período).</p>`+(imp.length?`<div class="tblwrap"><table><thead><tr><th>Conta / premissa</th><th>Base</th><th>Cenário</th><th>Impacto no caixa</th></tr></thead><tbody>`+
+    imp.map(x=>`<tr><td>${esc(impNomeLinha(x.kk,R))}</td><td>${impR(x.s0)}</td><td>${impR(x.s1)}</td><td class="${x.d>=0?'up':'down'}"><b>${impRs(x.d)}</b></td></tr>`).join('')+`</tbody></table></div>`:'<div class="muted small">Nenhuma conta alterada ainda.</div>')+`</div>`;
+  out.innerHTML=h;
+}
+
+/* ---- controles: período, cenários salvos ---- */
+function impFillControles(){
+  const ini=impIni(), p=impYM(ini), sm=$('#impIniM'), sy=$('#impIniY');
+  if(sm&&!sm.options.length){ sm.innerHTML=MESES.map((m,i)=>`<option value="${i}">${m}</option>`).join(''); const y0=new Date().getFullYear(); sy.innerHTML=Array.from({length:9},(_,i)=>y0-3+i).map(y=>`<option>${y}</option>`).join(''); }
+  if(sm){ sm.value=p.m; sy.value=p.y; } const sn=$('#impN'); if(sn) sn.value=String(IMP.n); const ss=$('#impSim'); if(ss) ss.checked=IMP.incSim;
+  const sc=$('#impCen'); if(sc){ sc.innerHTML=`<option value="">— novo cenário (não salvo) —</option>`+IMP.cens.map(x=>`<option value="${x.id}" ${x.id===IMP.cenId?'selected':''}>${esc(x.nome)}</option>`).join(''); }
+}
+function impMesOpts(sel){ const ini=impIni(); let o=''; for(let a=ini-6;a<ini+IMP.n+24;a++) o+=`<option value="${a}" ${a===+sel?'selected':''}>${impLbl(a)}</option>`; return o; }
+function impAlvoOpts(sel,soContas){ return G.grupos.slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0)).map(g=>{ const cs=G.contas.filter(c=>c.grupo_id===g.id&&c.ativo!==false&&!c.fora_fluxo).sort((a,b)=>(a.ordem||0)-(b.ordem||0)||String(a.nome).localeCompare(String(b.nome),'pt',{sensitivity:'base'}));
+  if(!cs.length) return ''; return `<optgroup label="${esc(g.nome)} · ${g.natureza||'Despesa'}">`+(soContas?'':`<option value="g${g.id}" ${sel==='g'+g.id?'selected':''}>▸ Grupo inteiro: ${esc(g.nome)}</option>`)+cs.map(c=>`<option value="c${c.id}" ${sel==='c'+c.id?'selected':''}>${esc(c.nome)}</option>`).join('')+'</optgroup>'; }).join(''); }
+
+/* ---- premissas: lista (liga/desliga/remove) + formulário ---- */
+function impRenderPremissas(){
+  const box=$('#impLista'); if(!box) return;
+  box.innerHTML=IMP.prem.length?IMP.prem.map(p=>`<div class="imp-prem ${p.ativo?'':'off'}"><label><input type="checkbox" data-impon="${p.id}" ${p.ativo?'checked':''}> <span>${esc(impDesc(p))}</span></label><button class="iconbtn" data-impdel="${p.id}" title="Remover premissa">✕</button></div>`).join('')
+    :'<div class="muted small" style="margin-bottom:8px">Nenhuma premissa. Monte o cenário abaixo — por exemplo, “se a receita X cair 20% de jan a jun”.</div>';
+  const f=$('#impForm'); if(!f||f.dataset.tipo===IMP.tipoForm) return;
+  f.dataset.tipo=IMP.tipoForm; const t=IMP.tipoForm, ini=impIni(), fimDef=ini+IMP.n-1;
+  const per=`<div class="fld"><label>De</label><select id="ipDe">${impMesOpts(ini)}</select></div><div class="fld"><label>Até</label><select id="ipAte">${impMesOpts(fimDef)}</select></div>`;
+  let campos='';
+  if(t==='cresce'||t==='diminui') campos=`<div class="fld imp-wide"><label>Conta ou grupo</label><select id="ipAlvo">${impAlvoOpts('',false)}</select></div>${per}<div class="fld"><label>${t==='cresce'?'Crescer':'Diminuir'} (%)</label><input type="number" id="ipPct" min="0" step="0.1" placeholder="ex.: 10"></div>`;
+  else if(t==='fixo') campos=`<div class="fld imp-wide"><label>Conta</label><select id="ipAlvo">${impAlvoOpts('',true)}</select></div>${per}<div class="fld"><label>Valor por mês (R$)</label><input type="number" id="ipValor" min="0" step="0.01"></div>`;
+  else if(t==='adiar') campos=`<div class="fld imp-wide"><label>Conta</label><select id="ipAlvo">${impAlvoOpts('',true)}</select></div>${per}<div class="fld"><label>Meses (+ adiar / − antecipar)</label><input type="number" id="ipMeses" step="1" value="1"></div>`;
+  else if(t==='emprestimo') campos=`<div class="fld"><label>Valor (R$)</label><input type="number" id="ipValor" min="0" step="0.01"></div><div class="fld"><label>Entrada no mês</label><select id="ipMes">${impMesOpts(ini)}</select></div><div class="fld"><label>Parcelas</label><input type="number" id="ipParc" min="1" step="1" value="12"></div><div class="fld"><label>Taxa (% ao mês)</label><input type="number" id="ipTaxa" min="0" step="0.01" value="2"></div><div class="fld"><label>Carência (meses)</label><input type="number" id="ipCar" min="0" step="1" value="0"></div>`;
+  else campos=`<div class="fld"><label>Valor por mês (R$)</label><input type="number" id="ipValor" min="0" step="0.01"></div>${per}<div class="fld imp-wide"><label>Descrição (opcional)</label><input type="text" id="ipDesc" placeholder="${t==='retirada'?'ex.: pró-labore extra':'ex.: aporte dos sócios'}"></div>`;
+  f.innerHTML=`<div class="imp-form"><div class="fld imp-wide"><label>Se…</label><select id="ipTipo">${IMP_TIPOS.map(([k,l])=>`<option value="${k}" ${k===t?'selected':''}>${l}</option>`).join('')}</select></div>${campos}<div class="fld" style="align-self:flex-end"><button class="btn" id="ipAdd">＋ Adicionar premissa</button></div></div>`;
+}
+function impAddPremissa(){
+  const t=IMP.tipoForm, v=id=>{ const e=$('#'+id); return e?e.value:''; }, p={id:IMP.seq++,ativo:true};
+  if(t==='cresce'||t==='diminui'){ const pct=parseFloat(v('ipPct')); if(!(pct>0)){toast('Informe o percentual');return;} Object.assign(p,{tipo:'pct',alvo:v('ipAlvo'),de:+v('ipDe'),ate:+v('ipAte'),pct:t==='cresce'?pct:-pct}); }
+  else if(t==='fixo'){ const val=parseFloat(v('ipValor')); if(!(val>=0)||v('ipValor')===''){toast('Informe o valor');return;} Object.assign(p,{tipo:'fixo',alvo:v('ipAlvo'),de:+v('ipDe'),ate:+v('ipAte'),valor:val}); }
+  else if(t==='adiar'){ const m=parseInt(v('ipMeses'),10); if(!m){toast('Informe quantos meses');return;} Object.assign(p,{tipo:'adiar',alvo:v('ipAlvo'),de:+v('ipDe'),ate:+v('ipAte'),meses:m}); }
+  else if(t==='emprestimo'){ const val=parseFloat(v('ipValor')), n=parseInt(v('ipParc'),10); if(!(val>0)||!(n>0)){toast('Informe valor e parcelas');return;} Object.assign(p,{tipo:'emprestimo',valor:val,mes:+v('ipMes'),parcelas:n,taxa:parseFloat(v('ipTaxa'))||0,carencia:parseInt(v('ipCar'),10)||0}); }
+  else { const val=parseFloat(v('ipValor')); if(!(val>0)){toast('Informe o valor');return;} Object.assign(p,{tipo:t,valor:val,de:+v('ipDe'),ate:+v('ipAte'),desc:v('ipDesc').trim()}); }
+  if(p.de!=null&&p.ate!=null&&p.ate<p.de){ toast('O mês final deve ser depois do inicial'); IMP.seq--; return; }
+  IMP.prem.push(p); renderImpactos(); toast('Premissa adicionada — veja o impacto');
+}
+async function impCarregarCens(){ if(!SB) return; try{ const r=await SB.from('fcah_cenario_impacto').select('*').eq('empresa_id',authEmp()).order('nome'); if(!r.error) IMP.cens=r.data||[]; }catch(_){ } }
+function impAbrirCen(id){ const c=IMP.cens.find(x=>x.id===id); if(!c){ IMP.cenId=null; IMP.nome=''; IMP.prem=[]; renderImpactos(); return; }
+  IMP.cenId=c.id; IMP.nome=c.nome; IMP.prem=(c.premissas||[]).map(p=>({...p})); IMP.seq=Math.max(0,...IMP.prem.map(p=>+p.id||0))+1;
+  const cf=c.config||{}; if(cf.ini!=null) IMP.ini=+cf.ini; if(cf.n) IMP.n=+cf.n; if(cf.incSim!=null) IMP.incSim=!!cf.incSim; renderImpactos(); }
+async function impSalvar(comoNovo){
+  let nome=IMP.nome; if(comoNovo||!IMP.cenId){ nome=prompt('Nome do cenário:', comoNovo&&nome?nome+' (cópia)':nome||''); if(!nome) return; }
+  const row={nome:nome.trim(),premissas:IMP.prem,config:{ini:IMP.ini,n:IMP.n,incSim:IMP.incSim},atualizado_em:new Date().toISOString()};
+  let r; if(IMP.cenId&&!comoNovo) r=await SB.from('fcah_cenario_impacto').update(row).eq('id',IMP.cenId).select().maybeSingle();
+  else r=await SB.from('fcah_cenario_impacto').insert({...row,empresa_id:authEmp()}).select().maybeSingle();
+  if(r.error){ toast('Erro: '+r.error.message); return; }
+  IMP.cenId=r.data.id; IMP.nome=r.data.nome; await impCarregarCens(); renderImpactos(); toast('Cenário salvo ✓');
+}
+async function impExcluir(){ if(!IMP.cenId){ toast('Escolha um cenário salvo'); return; } if(!confirm('Excluir o cenário "'+IMP.nome+'"? (só as premissas — nenhum lançamento é afetado)')) return;
+  const r=await SB.from('fcah_cenario_impacto').delete().eq('id',IMP.cenId); if(r.error){ toast('Erro: '+r.error.message); return; }
+  IMP.cenId=null; IMP.nome=''; IMP.prem=[]; await impCarregarCens(); renderImpactos(); toast('Cenário excluído'); }
+function wireImpactos(){
+  const v=$('#v-impactos'); if(!v||v.dataset.wired) return; v.dataset.wired='1';
+  v.addEventListener('change',e=>{ const t=e.target;
+    if(t.id==='ipTipo'){ IMP.tipoForm=t.value; impRenderPremissas(); return; }
+    if(t.dataset&&t.dataset.impon){ const p=IMP.prem.find(x=>x.id==t.dataset.impon); if(p){ p.ativo=t.checked; renderImpactos(); } return; }
+    if(t.id==='impIniM'||t.id==='impIniY'){ IMP.ini=impAbs(+$('#impIniY').value,+$('#impIniM').value); const f=$('#impForm'); if(f) f.dataset.tipo=''; renderImpactos(); return; }
+    if(t.id==='impN'){ IMP.n=+t.value; const f=$('#impForm'); if(f) f.dataset.tipo=''; renderImpactos(); return; }
+    if(t.id==='impSim'){ IMP.incSim=t.checked; renderImpactos(); return; }
+    if(t.id==='impCen'){ impAbrirCen(+t.value||null); return; } });
+  v.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+    if(b.id==='ipAdd') impAddPremissa();
+    else if(b.dataset.impdel){ IMP.prem=IMP.prem.filter(x=>x.id!=b.dataset.impdel); renderImpactos(); toast('Premissa removida — impacto desfeito'); }
+    else if(b.id==='impNovo'){ IMP.cenId=null; IMP.nome=''; IMP.prem=[]; renderImpactos(); }
+    else if(b.id==='impSalvar') impSalvar(false);
+    else if(b.id==='impSalvarComo') impSalvar(true);
+    else if(b.id==='impExcluir') impExcluir(); });
+}
+
+function renderAll(){renderSim();renderGestao();renderSimLan();renderDash();const vi=$('#v-impactos');if(vi&&vi.classList.contains('active'))renderImpactos();}
 fillYearSelectors();wireGestao();wireSim();renderAll();initDB();
 </script>
 </body>
