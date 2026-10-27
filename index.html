@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-14a)</title>
+<title>FCAH — Controle Financeiro (v2026-10-27a)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -225,6 +225,71 @@ body.perm-no-del-cad #v-cad [data-act="del"]{ display:none !important; }
 .imp-tbl td,.imp-tbl th{white-space:nowrap}
 .imp-tbl td.imp-neg{color:var(--red);font-weight:700;background:rgba(184,57,42,.08)}
 body.perm-no-impactos #impSalvar, body.perm-no-impactos #impSalvarComo, body.perm-no-del-impactos #impExcluir{ display:none !important; }
+/* ===== Fluxo Gerencial 2.0 ===== */
+.cg-toolbar{flex-wrap:wrap;row-gap:10px}
+.cg-seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--panel2)}
+.cg-seg button{border:0;background:transparent;color:var(--txt2);padding:7px 12px;font-size:12.5px;font-weight:650;cursor:pointer;font-family:inherit}
+.cg-seg button.on{background:var(--accent);color:#fff}
+.cg-chartbox{border:1px solid var(--line);border-radius:12px;padding:12px 14px 12px;margin:2px 0 14px;background:linear-gradient(180deg,var(--panel2),var(--panel))}
+.cg-chart-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:13px}
+.cg-link{background:none;border:0;color:var(--accent2);cursor:pointer;font-size:12px;font-weight:650;font-family:inherit}
+.cg-svg{width:100%;height:auto;display:block;max-height:280px}
+.cg-ax{font-size:10.5px;fill:var(--txt2)}.cg-axs{fill:var(--accent2);font-weight:650}.cg-axfoco{fill:var(--accent2);font-weight:800}
+.cg-br{fill:var(--green);opacity:.85}.cg-bd{fill:var(--red);opacity:.72}
+.cg-linha{stroke:var(--accent2);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round}
+.cg-pt{fill:var(--panel);stroke:var(--accent2);stroke-width:2}.cg-pt.neg{stroke:var(--red);fill:var(--red)}
+.cg-proj{fill:rgba(56,189,248,.08)}.cg-projtxt{fill:#0284c7;font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:9.5px}
+.cg-hoje{stroke:var(--amber);stroke-dasharray:4 3;stroke-width:1.5}.cg-hojetxt{fill:var(--amber);font-weight:800}
+.cg-col{cursor:pointer}.cg-hit{fill:transparent}.cg-col:hover .cg-hit{fill:rgba(128,128,128,.07)}.cg-col.foco .cg-hit{fill:rgba(12,122,85,.12)}
+.cg-leg{display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--txt2);margin-top:2px}
+.cg-leg i{display:inline-block;width:12px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.cg-lr{background:var(--green)}.cg-ld{background:var(--red)}.cg-ll{height:3px!important;background:var(--accent2);vertical-align:3px!important}
+.cg-insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:10px}
+.cg-ins{border:1px solid var(--line);border-radius:10px;padding:8px 11px;background:var(--panel);display:flex;flex-direction:column;gap:1px;font-size:12px;min-width:0}
+.cg-ins small{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--txt2);font-weight:650}
+.cg-ins b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cg-ins span{color:var(--txt2)}.cg-ins .pos{color:var(--green)}.cg-ins .neg{color:var(--red)}
+.cg-ins.alerta{border-color:var(--red);background:rgba(184,57,42,.06)}.cg-ins.ok{border-color:var(--green)}
+#cgTbl.cg-mod{border-collapse:separate;border-spacing:0;font-size:12.5px}
+#cgTbl.cg-mod th,#cgTbl.cg-mod td{padding:6px 9px;border-bottom:1px solid var(--line);white-space:nowrap}
+#cgTbl.cg-mod .cg-nome{position:sticky;left:0;z-index:1;background:var(--panel);text-align:left;min-width:220px;max-width:300px;overflow:hidden;text-overflow:ellipsis}
+#cgTbl.cg-mod thead th{z-index:2;vertical-align:bottom}#cgTbl.cg-mod thead th.cg-nome{z-index:4}
+#cgTbl.cg-mod .cg-n{text-align:right;font-variant-numeric:tabular-nums}
+#cgTbl.cg-mod th.cg-mes{line-height:1.15;cursor:pointer}#cgTbl.cg-mod th.cg-mes:hover{color:var(--accent2)}
+.cg-fase{display:block;font-size:8.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--txt3);margin-top:3px}
+.cg-fase.hoje{color:var(--amber)}.cg-fase.proj{color:#0284c7}
+.cg-unid{display:block;font-size:9px;font-weight:600;color:var(--txt3);text-transform:none;letter-spacing:0;margin-top:3px}
+#cgTbl.cg-mod .cg-tend{width:74px;padding:2px 6px;text-align:center}.cg-spk{width:64px;height:18px;display:block;margin:auto}
+#cgTbl.cg-mod tr.cg-g td{background-color:var(--panel2);border-top:1px solid var(--line2)}
+#cgTbl.cg-mod tr.cg-g td.cg-nome{background:var(--panel2)}
+#cgTbl.cg-mod tr.cg-g td.money{font-weight:700}
+#cgTbl.cg-mod tr.cg-c td.cg-nome{padding-left:42px;font-weight:500;color:var(--txt)}
+#cgTbl.cg-mod tbody tr:hover td.cg-nome{color:var(--accent2)}
+.cg-chev{width:20px;height:20px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--txt2);cursor:pointer;margin-right:6px;font-size:14px;line-height:1;transition:transform .15s;display:inline-grid;place-items:center;vertical-align:middle;padding:0}
+.cg-chev.on{transform:rotate(90deg);color:var(--accent2);border-color:var(--accent)}
+.cg-chev-sp{display:inline-block;width:26px}
+.cg-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--txt3);margin-right:7px;vertical-align:1px}
+.cg-dot.rec{background:var(--green)}.cg-dot.desp{background:var(--red)}.cg-dot.alerta{background:var(--amber)}
+.cg-qt{margin-left:7px;font-size:10px;font-weight:700;color:var(--txt2);background:var(--chip);border-radius:9px;padding:1px 6px}
+#cgTbl.cg-mod td.cg-zero{color:var(--txt3)}
+#cgTbl.cg-mod .cg-tot{font-weight:750;border-left:2px solid var(--line2)}
+#cgTbl.cg-mod .cg-med{color:var(--txt2);font-size:11.5px}
+/* Total e Média fixos à direita (os meses rolam entre o nome e eles) */
+#cgTbl.cg-mod .cg-med{position:sticky;right:0;box-sizing:border-box;width:74px;min-width:74px;max-width:74px;background:var(--panel);z-index:1}
+#cgTbl.cg-mod .cg-tot{position:sticky;right:74px;background:var(--panel);z-index:1;box-shadow:-6px 0 8px -6px rgba(0,0,0,.18)}
+#cgTbl.cg-mod .cg-nome{box-shadow:6px 0 8px -6px rgba(0,0,0,.18)}
+#cgTbl.cg-mod thead th.cg-tot,#cgTbl.cg-mod thead th.cg-med{z-index:3}
+#cgTbl.cg-mod tr.cg-g td.cg-tot,#cgTbl.cg-mod tr.cg-g td.cg-med,#cgTbl.cg-mod tfoot tr.cg-acc td.cg-tot,#cgTbl.cg-mod tfoot tr.cg-acc td.cg-med{background:var(--panel2)}
+#cgTbl.cg-mod tfoot td.cg-tot,#cgTbl.cg-mod tfoot td.cg-med{z-index:3}
+#cgTbl.cg-mod td.foco,#cgTbl.cg-mod th.foco{box-shadow:inset 2px 0 0 var(--accent),inset -2px 0 0 var(--accent)}#cgTbl.cg-mod th.foco{color:var(--accent2)}
+#cgTbl.cg-mod tfoot td{position:sticky;bottom:0;background:var(--panel);font-weight:750;z-index:1}
+#cgTbl.cg-mod tfoot tr.cg-res td{border-top:2px solid var(--line2)}
+#cgTbl.cg-mod tfoot tr.cg-acc td{background:var(--panel2)}
+#cgTbl.cg-mod tfoot td.cg-nome{z-index:3}
+#cgTbl.cg-mod td.cg-acc-neg{background:rgba(184,57,42,.14)}
+.cg-sub{display:block;font-size:10px;font-weight:500;color:var(--txt3)}
+.cg-tag-fora{background:rgba(148,163,184,.25);color:#64748b;margin-left:6px}
+#cgTbl.cg-mod tr.cg-fora td{opacity:.72}
 /* Dashboard */
 #v-dash .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:900px){#v-dash .dgrid{grid-template-columns:1fr}}
@@ -298,7 +363,7 @@ body.perm-no-impactos #impSalvar, body.perm-no-impactos #impSalvarComo, body.per
     <button type="button" class="nav-topico"><span>Cadastros</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
     <a data-v="cad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20.5c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5M16.5 11a3 3 0 0 0 0-6M21.5 20.5c0-2.8-1.7-5.2-4.2-6.2"/></svg><span>Cadastros e usuários</span></a>
   </div>
-  <div class="nav-foot" id="navFoot">v2026-10-14a · base FCAH</div>
+  <div class="nav-foot" id="navFoot">v2026-10-27a · base FCAH</div>
 </nav>
 <main class="content">
 
@@ -391,14 +456,19 @@ body.perm-no-impactos #impSalvar, body.perm-no-impactos #impSalvarComo, body.per
 <!-- ============ CAIXA GERENCIAL ============ -->
 <section class="view" id="v-caixager">
   <div class="panel">
-    <div class="toolbar">
+    <div class="toolbar cg-toolbar">
+      <div class="fld"><label>Visualização</label><div class="cg-seg" id="cgUiSeg"><button type="button" data-ui="moderna">✨ Fluxo 2.0</button><button type="button" data-ui="classica">Clássica</button></div></div>
       <div class="fld"><label>Agrupar por</label><select id="cgModo"><option value="conta">Conta (dentro do grupo)</option><option value="grupo">Somente grupo</option></select></div>
       <div class="fld"><label>Visão</label><select id="cgTipo"><option value="saldo">Saldo (Receitas − Despesas)</option><option value="Receita">Só Receitas</option><option value="Despesa">Só Despesas</option></select></div>
+      <div class="fld cg-so-mod"><label>Buscar conta</label><input type="text" id="cgBusca" placeholder="ex.: aluguel" style="width:150px" autocomplete="off"></div>
+      <div class="fld cg-so-mod"><label>Grupos</label><div style="display:flex;gap:4px"><button class="btn ghost" id="cgExpandir" type="button" title="Abrir todos os grupos">⊕ abrir</button><button class="btn ghost" id="cgRecolher" type="button" title="Fechar todos os grupos">⊖ fechar</button></div></div>
+      <label class="small cg-so-mod" style="display:flex;gap:6px;align-items:center;padding-bottom:9px" title="Mostra os valores em milhares de reais (o valor exato aparece ao passar o mouse)"><input type="checkbox" id="cgMil"> R$ mil</label>
       <div class="grow"></div>
       <div class="fld"><label>Início (12 meses a partir de)</label><div style="display:flex;gap:4px;align-items:center"><button class="iconbtn" id="cgPrev" title="Mês anterior" type="button">‹</button><select id="cgMes" style="min-width:66px"><option value="0">jan</option><option value="1">fev</option><option value="2">mar</option><option value="3">abr</option><option value="4">mai</option><option value="5">jun</option><option value="6">jul</option><option value="7">ago</option><option value="8">set</option><option value="9">out</option><option value="10">nov</option><option value="11">dez</option></select><select id="cgAno" style="min-width:78px"></select><button class="iconbtn" id="cgNext" title="Próximo mês" type="button">›</button></div></div>
       <button class="btn ghost" id="cgExport">⭳ Exportar CSV</button>
     </div>
     <div class="kpis" id="cgKpis"></div>
+    <div id="cgChartBox" class="cg-chartbox cg-so-mod"><div class="cg-chart-h"><b>Entradas × saídas × saldo de caixa</b><button class="cg-link" id="cgGrafToggle" type="button"></button></div><div id="cgChartCorpo"></div><div class="cg-insights" id="cgInsights"></div></div>
     <div class="tblwrap" style="max-height:calc(100vh - 210px);overflow:auto"><table id="cgTbl"></table></div>
   </div>
 </section>
@@ -2012,7 +2082,7 @@ async function simPanelAct(act,lote,nome){
 
 /* ---- CAIXA GERENCIAL (pivot mês×conta/grupo) ---- */
 const MESES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-function renderCaixaGer(){
+function renderCaixaGerClassico(){
   if(!$('#cgTbl'))return;
   if(!SB){semDB('#cgTbl');$('#cgKpis').innerHTML='';return;}
   const modo=$('#cgModo').value, tipo=$('#cgTipo').value;
@@ -2067,6 +2137,173 @@ function renderCaixaGer(){
   h+=`<tr class="tot"><td title="Inclui o saldo acumulado de antes de ${esc(months[0].label)} (R$ ${fmt.format(saldoAnterior)})">Acumulado <span class="muted small">(inclui saldo anterior)</span></td>${accArr.map(v=>`<td class="money ${v<0?'neg':'pos'}">${fmt.format(v)}</td>`).join('')}<td class="money ${acc<0?'neg':'pos'}">${fmt.format(acc)}</td></tr>`;
   h+='</tbody>';$('#cgTbl').innerHTML=h;
 }
+/* ===================== FLUXO GERENCIAL 2.0 (visão moderna) =====================
+   Mesmos números da visão clássica (mesma regra: valor com sinal pelo tipo, contas "fora do fluxo" fora dos totais,
+   acumulado com o saldo anterior). Acrescenta: gráfico entradas × saídas × saldo, destaques automáticos,
+   grupos recolhíveis, busca de conta, mapa de calor, tendência (sparkline), média/mês, colunas e rodapé fixos. */
+const CG_LS=(k,d)=>{ try{ const v=localStorage.getItem(k); return v==null?d:v; }catch(_){ return d; } };
+const CG_SET=(k,v)=>{ try{ localStorage.setItem(k,v); }catch(_){ } };
+const CG_UI={ modo:CG_LS('fcah-cg-ui','moderna'), mil:CG_LS('fcah-cg-mil','1')==='1', graf:CG_LS('fcah-cg-graf','1')==='1', busca:'', foco:null,
+  fechados:new Set((()=>{ try{ return JSON.parse(CG_LS('fcah-cg-fechados','[]')); }catch(_){ return []; } })()) };
+let CG_LAST=null;
+function renderCaixaGer(){
+  const mod=CG_UI.modo==='moderna';
+  document.querySelectorAll('#v-caixager .cg-so-mod').forEach(e=>e.style.display=mod?'':'none');
+  document.querySelectorAll('#cgUiSeg button').forEach(b=>b.classList.toggle('on',b.dataset.ui===CG_UI.modo));
+  const t=$('#cgTbl'); if(t) t.classList.toggle('cg-mod',mod);
+  if(!mod){ const cb=$('#cgChartBox'); if(cb) cb.style.display='none'; return renderCaixaGerClassico(); }
+  return renderCaixaGerModerno();
+}
+function cgDados(){
+  const tipo=$('#cgTipo').value; const win=cgWindow(); const months=win.months; const N=months.length; const idxOf={}; months.forEach((mm,i)=>idxOf[mm.y+'-'+mm.m]=i);
+  const winIdx=l=>{ if(!l.data_pagamento)return null; const k=(+String(l.data_pagamento).slice(0,4))+'-'+(+String(l.data_pagamento).slice(5,7)-1); return idxOf[k]!=null?idxOf[k]:null; };
+  const val=l=>{ if(tipo==='Receita')return l.tipo==='Receita'?+l.valor:0; if(tipo==='Despesa')return l.tipo==='Despesa'?-(+l.valor):0; return l.tipo==='Receita'?+l.valor:-(+l.valor); };
+  const contaById={}; G.contas.forEach(c=>contaById[c.id]=c);
+  const fora=l=>l.conta_id!=null&&contaById[l.conta_id]&&contaById[l.conta_id].fora_fluxo;
+  const z=()=>new Array(N).fill(0);
+  const gmap={},gcnt={},cmap={},ccnt={}, semArr=z(), semCnt=z(), semGrupo=new Set(), rec=z(), desp=z();
+  G.lanc.forEach(l=>{ const mo=winIdx(l); if(mo==null)return; const v=val(l), has=v!==0, fo=fora(l);
+    if(!fo){ if(l.tipo==='Receita') rec[mo]+=+l.valor||0; else desp[mo]+=+l.valor||0; }
+    if(l.conta_id==null){ if(!fo){ semArr[mo]+=v; if(has)semCnt[mo]++; } return; }
+    if(!cmap[l.conta_id]){ cmap[l.conta_id]=z(); ccnt[l.conta_id]=z(); } cmap[l.conta_id][mo]+=v; if(has)ccnt[l.conta_id][mo]++;
+    if(fo) return;
+    const c=contaById[l.conta_id], g=c?c.grupo_id:null;
+    if(g!=null){ if(!gmap[g]){ gmap[g]=z(); gcnt[g]=z(); } gmap[g][mo]+=v; if(has)gcnt[g][mo]++; } else semGrupo.add(l.conta_id); });
+  const sgArr=z(), sgCnt=z(); semGrupo.forEach(cid=>{ cmap[cid].forEach((v,i)=>sgArr[i]+=v); ccnt[cid].forEach((v,i)=>sgCnt[i]+=v); });
+  const tot=z(), cnt=z(); Object.values(gmap).forEach(a=>a.forEach((v,i)=>tot[i]+=v)); [semArr,sgArr].forEach(a=>a.forEach((v,i)=>tot[i]+=v));
+  Object.values(gcnt).forEach(a=>a.forEach((v,i)=>cnt[i]+=v)); [semCnt,sgCnt].forEach(a=>a.forEach((v,i)=>cnt[i]+=v));
+  const ini=months[0].y*12+months[0].m; let saldo0=0, saldo0Fluxo=0;
+  G.lanc.forEach(l=>{ if(!l.data_pagamento||fora(l))return; const a=(+String(l.data_pagamento).slice(0,4))*12+(+String(l.data_pagamento).slice(5,7)-1);
+    if(a<ini){ saldo0+=val(l); saldo0Fluxo+=(l.tipo==='Receita'?1:-1)*(+l.valor||0); } });
+  let acc=saldo0; const accArr=tot.map(v=>acc+=v);
+  let acc2=saldo0Fluxo; const saldoReal=rec.map((r,i)=>acc2+=r-desp[i]);
+  const nowAbs=(()=>{const d=new Date();return d.getFullYear()*12+d.getMonth();})();
+  const fase=months.map(mm=>{ const a=mm.y*12+mm.m; return a<nowAbs?'real':a===nowAbs?'hoje':'proj'; });
+  return {tipo,months,N,gmap,gcnt,cmap,ccnt,semArr,semCnt,sgArr,sgCnt,semGrupo,tot,cnt,saldo0,accArr,rec,desp,saldoReal,fase,contaById};
+}
+const cgSum=a=>a.reduce((s,v)=>s+v,0);
+function cgFmt(v){ if(!CG_UI.mil) return fmt.format(Math.round(v)); const k=v/1000; return Math.abs(k)<10&&k!==0?fmt1.format(k):fmt.format(Math.round(k)); }
+const cgFull=v=>(v<0?'−':'')+'R$ '+fmt.format(Math.abs(Math.round(v)));
+function cgSpark(a,cor){ const mx=Math.max(...a), mn=Math.min(...a); if(mx===mn) return '<svg class="cg-spk" viewBox="0 0 64 18"><line x1="1" x2="63" y1="9" y2="9" stroke="var(--txt3)" stroke-width="1.2"/></svg>';
+  const p=a.map((v,i)=>`${(1+i*62/(a.length-1)).toFixed(1)},${(16-(v-mn)/(mx-mn)*14).toFixed(1)}`).join(' ');
+  return `<svg class="cg-spk" viewBox="0 0 64 18"><polyline points="${p}" fill="none" stroke="${cor}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>`; }
+function cgHeat(v,max){ if(!v||!max) return ''; const a=(0.05+0.2*Math.min(1,Math.abs(v)/max)).toFixed(3); return v>0?`background:rgba(28,127,78,${a})`:`background:rgba(184,57,42,${a})`; }
+
+function renderCaixaGerModerno(){
+  if(!$('#cgTbl'))return;
+  if(!SB){ semDB('#cgTbl'); $('#cgKpis').innerHTML=''; return; }
+  $('#cgKpis').innerHTML='';
+  const D=cgDados(), modo=$('#cgModo').value, M=D.months, q=CG_UI.busca.trim().toLowerCase();
+  CG_LAST=D; cgRenderGrafico(D);
+  const lbl=M.map(mm=>mm.label);
+  const tdNum=(v,scope,id,m,n,heatMax,extraCls)=>{ const f=m!=='all'&&D.fase[m]==='proj'?' fut':''; const fo=m!=='all'&&CG_UI.foco===m?' foco':'';
+    if(!v){ if(n>0) return `<td class="money cgcell cg-n${f}${fo}" style="color:var(--amber);font-weight:700" data-scope="${scope}" data-id="${id}" data-mes="${m}" title="Saldo zero com ${n} lançamento(s) — clique para ver">0 ⚠</td>`;
+      return `<td class="cg-n cg-zero${f}${fo}">·</td>`; }
+    const tip=`${m==='all'?'Total do período':lbl[m]} · ${cgFull(v)}${n?` · ${n} lançamento(s)`:''} — clique para ver`;
+    return `<td class="money cgcell cg-n ${v<0?'neg':'pos'}${f}${fo}${extraCls||''}" style="${heatMax?cgHeat(v,heatMax):''}" data-scope="${scope}" data-id="${id}" data-mes="${m}" title="${esc(tip)}">${cgFmt(v)}</td>`; };
+  const linha=(cls,attrs,nome,arr,cnt,scope,id,spkCor)=>{ const mx=Math.max(0,...arr.map(Math.abs)), t=cgSum(arr);
+    return `<tr class="${cls}" ${attrs}><td class="cg-nome">${nome}</td><td class="cg-tend">${cgSpark(arr,spkCor)}</td>${arr.map((v,m)=>tdNum(v,scope,id,m,cnt[m],mx)).join('')}${tdNum(t,scope,id,'all',cgSum(cnt),0,' cg-tot')}<td class="cg-n cg-med money ${t<0?'neg':'pos'}" title="Média mensal: ${esc(cgFull(t/D.N))}">${t?cgFmt(t/D.N):'·'}</td></tr>`; };
+  const hoje=D.fase.indexOf('hoje');
+  let h=`<thead><tr><th class="cg-nome">Grupo / conta<span class="cg-unid">${CG_UI.mil?'valores em R$ mil':'valores em R$'}</span></th><th class="cg-tend">Tendência</th>`+
+    M.map((mm,m)=>`<th class="cg-n cg-mes${D.fase[m]==='proj'?' fut':''}${CG_UI.foco===m?' foco':''}" data-foco="${m}" title="Clique para destacar o mês">${mm.label}<span class="cg-fase ${D.fase[m]}">${D.fase[m]==='real'?'realizado':D.fase[m]==='hoje'?'mês atual':'projeção'}</span></th>`).join('')+
+    `<th class="cg-n cg-tot">Total</th><th class="cg-n cg-med">Média/mês</th></tr></thead><tbody>`;
+  const grupos=G.grupos.slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0));
+  const contasDe=gid=>G.contas.filter(c=>c.grupo_id===gid&&!c.oculta&&D.cmap[c.id]&&(D.cmap[c.id].some(v=>v!==0)||D.ccnt[c.id].some(n=>n>0)))
+    .sort((a,b)=>(a.ordem||0)-(b.ordem||0)||String(a.nome||'').localeCompare(String(b.nome||''),'pt',{sensitivity:'base'}));
+  const bate=c=>!q||String(c.nome||'').toLowerCase().includes(q);
+  let algum=false;
+  grupos.forEach(g=>{
+    const ga=D.gmap[g.id]||new Array(D.N).fill(0), gc=D.gcnt[g.id]||new Array(D.N).fill(0), cs=contasDe(g.id), vis=cs.filter(bate);
+    if(q&&!vis.length&&!String(g.nome).toLowerCase().includes(q)) return;
+    if(!ga.some(v=>v!==0)&&!gc.some(n=>n>0)&&!cs.length) return;
+    algum=true;
+    const aberto=modo==='conta'&&(q?true:!CG_UI.fechados.has(g.id)), nat=g.natureza==='Receita';
+    const chev=modo==='conta'&&cs.length?`<button class="cg-chev${aberto?' on':''}" data-tg="${g.id}" title="${aberto?'Recolher':'Expandir'} o grupo" type="button">›</button>`:'<span class="cg-chev-sp"></span>';
+    h+=linha('cg-g','data-g="'+g.id+'"',`${chev}<span class="cg-dot ${nat?'rec':'desp'}"></span><b>${esc(g.nome)}</b>${cs.length?`<span class="cg-qt">${cs.length}</span>`:''}`,ga,gc,'grupo',g.id,nat?'var(--green)':'var(--red)');
+    if(aberto) (q?vis:cs).forEach(c=>{ const fo=c.fora_fluxo;
+      h+=linha('cg-c'+(fo?' cg-fora':''),'',`${esc(c.nome)}${fo?' <span class="tag cg-tag-fora" title="Não entra em nenhum total do fluxo">fora do fluxo</span>':''}`,D.cmap[c.id],D.ccnt[c.id],'conta',c.id,'var(--accent)'); });
+  });
+  if(D.semGrupo.size&&(D.sgArr.some(v=>v!==0)||D.sgCnt.some(n=>n>0))&&!q){ algum=true; h+=linha('cg-g','','<span class="cg-chev-sp"></span><span class="cg-dot"></span><b>(Sem grupo)</b>',D.sgArr,D.sgCnt,'semgrupo',0,'var(--txt2)'); }
+  if((D.semArr.some(v=>v!==0)||D.semCnt.some(n=>n>0))&&!q){ algum=true; h+=linha('cg-g cg-semconta','','<span class="cg-chev-sp"></span><span class="cg-dot alerta"></span><b>Lançamentos sem conta</b>',D.semArr,D.semCnt,'semconta',0,'var(--amber)'); }
+  if(!algum) h+=`<tr><td class="cg-nome muted" colspan="${D.N+4}">${q?'Nenhuma conta encontrada para “'+esc(CG_UI.busca)+'”.':'Sem lançamentos neste período.'}</td></tr>`;
+  h+='</tbody><tfoot>';
+  const tt=cgSum(D.tot);
+  h+=`<tr class="cg-res"><td class="cg-nome"><b>Resultado do mês</b></td><td class="cg-tend">${cgSpark(D.tot,'var(--accent)')}</td>${D.tot.map((v,m)=>tdNum(v,'all',0,m,D.cnt[m],0)).join('')}${tdNum(tt,'all',0,'all',cgSum(D.cnt),0,' cg-tot')}<td class="cg-n cg-med money ${tt<0?'neg':'pos'}">${cgFmt(tt/D.N)}</td></tr>`;
+  const fim=D.accArr[D.N-1];
+  h+=`<tr class="cg-acc"><td class="cg-nome" title="Inclui o saldo de antes de ${esc(lbl[0])}: ${esc(cgFull(D.saldo0))}"><b>Saldo acumulado</b><span class="cg-sub">saldo anterior ${cgFmt(D.saldo0)}</span></td><td class="cg-tend">${cgSpark(D.accArr,fim<0?'var(--red)':'var(--green)')}</td>`+
+    D.accArr.map((v,m)=>`<td class="cg-n money ${v<0?'neg cg-acc-neg':'pos'}${D.fase[m]==='proj'?' fut':''}${CG_UI.foco===m?' foco':''}" title="${esc(lbl[m]+' · '+cgFull(v))}">${cgFmt(v)}</td>`).join('')+
+    `<td class="cg-n money cg-tot ${fim<0?'neg':'pos'}">${cgFmt(fim)}</td><td class="cg-n cg-med"></td></tr></tfoot>`;
+  $('#cgTbl').innerHTML=h;
+  const accTr=document.querySelector('#cgTbl tr.cg-acc'); if(accTr) document.querySelectorAll('#cgTbl tr.cg-res td').forEach(td=>td.style.bottom=accTr.offsetHeight+'px');
+  if(CG_UI.foco!=null){ const th=document.querySelector(`#cgTbl th[data-foco="${CG_UI.foco}"]`); if(th) th.scrollIntoView({block:'nearest',inline:'center'}); }
+}
+
+function cgRenderGrafico(D){
+  const box=$('#cgChartBox'); if(!box) return; box.style.display='';
+  const corpo=$('#cgChartCorpo'); const bt=$('#cgGrafToggle'); if(bt) bt.textContent=CG_UI.graf?'▾ ocultar gráfico':'▸ mostrar gráfico';
+  if(corpo) corpo.style.display=CG_UI.graf?'':'none';
+  cgInsights(D);
+  if(!CG_UI.graf||!corpo) return;
+  const W=1000,H=250,P={l:58,r:62,t:18,b:34}, N=D.N, cw=(W-P.l-P.r)/N, bw=Math.min(26,cw*0.32);
+  const mxB=Math.max(1,...D.rec,...D.desp), sal=D.saldoReal, smx=Math.max(0,...sal), smn=Math.min(0,...sal), mxS=Math.max(1,smx,-smn);
+  const mid=P.t+(H-P.t-P.b)/2, hB=(H-P.t-P.b)/2-4;
+  // barras e saldo compartilham a MESMA linha do zero (meio do gráfico); cada um com a sua escala
+  const yB=v=>v*hB/mxB, yS=v=>mid-v*hB/mxS, xC=i=>P.l+cw*i+cw/2;
+  let s=`<svg viewBox="0 0 ${W} ${H}" class="cg-svg" role="img" aria-label="Entradas, saídas e saldo por mês">`;
+  const p0=D.fase.indexOf('proj'); if(p0>=0) s+=`<rect x="${P.l+cw*p0}" y="${P.t-10}" width="${cw*(N-p0)}" height="${H-P.t-P.b+10}" class="cg-proj"/><text x="${P.l+cw*p0+6}" y="${P.t-1}" class="cg-ax cg-projtxt">projeção</text>`;
+  const hj=D.fase.indexOf('hoje'); if(hj>=0) s+=`<line x1="${xC(hj)}" x2="${xC(hj)}" y1="${P.t-10}" y2="${H-P.b}" class="cg-hoje"/><text x="${xC(hj)}" y="${H-P.b+26}" text-anchor="middle" class="cg-ax cg-hojetxt">hoje</text>`;
+  s+=`<line x1="${P.l}" x2="${W-P.r}" y1="${mid}" y2="${mid}" stroke="var(--line2)" stroke-width="1"/>`;
+  D.months.forEach((mm,i)=>{ const x=xC(i), r=D.rec[i], d=D.desp[i], res=r-d, foco=CG_UI.foco===i;
+    s+=`<g class="cg-col${foco?' foco':''}" data-foco="${i}"><rect x="${P.l+cw*i}" y="${P.t-10}" width="${cw}" height="${H-P.t-P.b+10}" class="cg-hit"/>`+
+      `<rect x="${x-bw-1}" y="${mid-yB(r)}" width="${bw}" height="${Math.max(0.5,yB(r))}" rx="3" class="cg-br"/>`+
+      `<rect x="${x+1}" y="${mid}" width="${bw}" height="${Math.max(0.5,yB(d))}" rx="3" class="cg-bd"/>`+
+      `<text x="${x}" y="${H-P.b+13}" text-anchor="middle" class="cg-ax${foco?' cg-axfoco':''}">${mm.label}</text>`+
+      `<title>${mm.label}\nEntradas: ${cgFull(r)}\nSaídas: ${cgFull(-d)}\nResultado: ${cgFull(res)}\nSaldo acumulado: ${cgFull(sal[i])}</title></g>`; });
+  s+=`<polyline points="${sal.map((v,i)=>`${xC(i).toFixed(1)},${yS(v).toFixed(1)}`).join(' ')}" fill="none" class="cg-linha"/>`;
+  s+=sal.map((v,i)=>`<circle cx="${xC(i)}" cy="${yS(v)}" r="3.8" class="${v<0?'cg-pt neg':'cg-pt'}"><title>Saldo acumulado ${D.months[i].label}: ${cgFull(v)}</title></circle>`).join('');
+  s+=`<text x="${P.l-8}" y="${mid-hB+4}" text-anchor="end" class="cg-ax">${cgFmt(mxB)}</text><text x="${P.l-8}" y="${mid+4}" text-anchor="end" class="cg-ax">0</text><text x="${P.l-8}" y="${mid+hB+4}" text-anchor="end" class="cg-ax">−${cgFmt(mxB)}</text>`;
+  s+=`<text x="${W-P.r+8}" y="${yS(mxS)+4}" class="cg-ax cg-axs">${cgFmt(mxS)}</text><text x="${W-P.r+8}" y="${mid+4}" class="cg-ax cg-axs">0</text><text x="${W-P.r+8}" y="${yS(-mxS)+4}" class="cg-ax cg-axs">−${cgFmt(mxS)}</text></svg>`;
+  corpo.innerHTML=s+`<div class="cg-leg"><span><i class="cg-lr"></i>entradas</span><span><i class="cg-ld"></i>saídas</span><span><i class="cg-ll"></i>saldo acumulado (escala à direita · abaixo do zero = caixa negativo)</span><span class="muted">${CG_UI.mil?'valores em R$ mil · ':''}clique num mês para destacá-lo na tabela</span></div>`;
+}
+function cgInsights(D){
+  const box=$('#cgInsights'); if(!box) return; const L=D.months.map(m=>m.label), res=D.rec.map((r,i)=>r-D.desp[i]);
+  if(!D.rec.some(v=>v)&&!D.desp.some(v=>v)){ box.innerHTML=''; return; }
+  const iMax=res.indexOf(Math.max(...res)), iMin=res.indexOf(Math.min(...res)), out=[];
+  const porConta=sinal=>{ let best=null; Object.entries(D.cmap).forEach(([cid,a])=>{ const c=D.contaById[cid]; if(!c||c.fora_fluxo) return; const t=cgSum(a); if(sinal*t>0&&(!best||Math.abs(t)>Math.abs(best.t))) best={c,t}; }); return best; };
+  const totR=cgSum(D.rec), totD=cgSum(D.desp), mr=porConta(1), md=porConta(-1);
+  out.push(`<div class="cg-ins"><small>Mês mais forte</small><b>${L[iMax]}</b><span class="pos">${cgFull(res[iMax])}</span></div>`);
+  out.push(`<div class="cg-ins"><small>Mês mais fraco</small><b>${L[iMin]}</b><span class="${res[iMin]<0?'neg':'pos'}">${cgFull(res[iMin])}</span></div>`);
+  if(mr) out.push(`<div class="cg-ins"><small>Principal entrada</small><b>${esc(mr.c.nome)}</b><span>${totR?fmt1.format(mr.t/totR*100):'—'}% das entradas</span></div>`);
+  if(md) out.push(`<div class="cg-ins"><small>Maior saída</small><b>${esc(md.c.nome)}</b><span>${totD?fmt1.format(-md.t/totD*100):'—'}% das saídas</span></div>`);
+  const sNeg=D.saldoReal.findIndex(v=>v<0);
+  out.push(sNeg>=0?`<div class="cg-ins alerta"><small>Atenção ao caixa</small><b>negativo em ${L[sNeg]}</b><span>menor saldo ${cgFull(Math.min(...D.saldoReal))}</span></div>`
+    :`<div class="cg-ins ok"><small>Caixa</small><b>positivo no período</b><span>menor saldo ${cgFull(Math.min(...D.saldoReal))}</span></div>`);
+  box.innerHTML=out.join('');
+}
+function cgExportModerno(){
+  const D=CG_LAST||cgDados(); const n=v=>String(Math.round(v*100)/100).replace('.',',');
+  const lin=[['Grupo/Conta',...D.months.map(m=>m.label),'Total'].join(';')];
+  const row=(nome,a)=>lin.push(['"'+String(nome).replace(/"/g,'""')+'"',...a.map(n),n(cgSum(a))].join(';'));
+  G.grupos.slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0)).forEach(g=>{ const ga=D.gmap[g.id]; if(!ga) return; row(g.nome,ga);
+    G.contas.filter(c=>c.grupo_id===g.id&&D.cmap[c.id]).forEach(c=>row('   '+c.nome+(c.fora_fluxo?' (fora do fluxo)':''),D.cmap[c.id])); });
+  if(D.semGrupo.size) row('(Sem grupo)',D.sgArr); if(D.semArr.some(v=>v)) row('Lançamentos sem conta',D.semArr);
+  row('Resultado do mês',D.tot); lin.push(['"Saldo acumulado"',...D.accArr.map(n),n(D.accArr[D.N-1])].join(';'));
+  const blob=new Blob(['﻿'+lin.join('\r\n')],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='fluxo_gerencial_'+D.months[0].label.replace('/','-')+'.csv'; a.click(); URL.revokeObjectURL(a.href); toast('CSV gerado (valores completos)');
+}
+function wireCaixaModerno(){
+  const v=$('#v-caixager'); if(!v||v.dataset.cgw) return; v.dataset.cgw='1';
+  v.addEventListener('click',e=>{
+    const ui=e.target.closest('#cgUiSeg button'); if(ui){ CG_UI.modo=ui.dataset.ui; CG_SET('fcah-cg-ui',CG_UI.modo); renderCaixaGer(); return; }
+    const tg=e.target.closest('[data-tg]'); if(tg){ const id=+tg.dataset.tg; CG_UI.fechados.has(id)?CG_UI.fechados.delete(id):CG_UI.fechados.add(id); CG_SET('fcah-cg-fechados',JSON.stringify([...CG_UI.fechados])); renderCaixaGer(); return; }
+    const fo=e.target.closest('[data-foco]'); if(fo&&!e.target.closest('.cgcell')){ const m=+fo.dataset.foco; CG_UI.foco=CG_UI.foco===m?null:m; renderCaixaGer(); return; }
+    if(e.target.closest('#cgExpandir')){ CG_UI.fechados.clear(); CG_SET('fcah-cg-fechados','[]'); renderCaixaGer(); return; }
+    if(e.target.closest('#cgRecolher')){ G.grupos.forEach(g=>CG_UI.fechados.add(g.id)); CG_SET('fcah-cg-fechados',JSON.stringify([...CG_UI.fechados])); renderCaixaGer(); return; }
+    if(e.target.closest('#cgGrafToggle')){ CG_UI.graf=!CG_UI.graf; CG_SET('fcah-cg-graf',CG_UI.graf?'1':'0'); renderCaixaGer(); return; } });
+  const b=$('#cgBusca'); if(b) b.addEventListener('input',()=>{ CG_UI.busca=b.value; renderCaixaGer(); });
+  const m=$('#cgMil'); if(m){ m.checked=CG_UI.mil; m.addEventListener('change',()=>{ CG_UI.mil=m.checked; CG_SET('fcah-cg-mil',CG_UI.mil?'1':'0'); renderCaixaGer(); }); }
+}
+
 // janela móvel de 12 meses a partir do mês/ano inicial selecionado
 function cgWindow(){ const sy=+$('#cgAno').value||new Date().getFullYear(); const sm=$('#cgMes')?+$('#cgMes').value:0;
   const months=[]; for(let i=0;i<12;i++){ const idx=sm+i; const y=sy+Math.floor(idx/12); const m=((idx%12)+12)%12; months.push({y,m,label:MESES[m]+'/'+String(y).slice(2)}); }
@@ -2093,6 +2330,7 @@ function exportLancCSV(){
   toast(rows.length+' lançamento(s) exportado(s) ✓');
 }
 function exportCaixaCSV(){
+  if(CG_UI.modo==='moderna'){ cgExportModerno(); return; }
   const t=$('#cgTbl'); if(!t||!t.rows.length){toast('Nada para exportar');return;}
   let csv=[...t.rows].map(r=>[...r.cells].map(c=>'"'+c.textContent.replace(/"/g,'""')+'"').join(';')).join('\r\n');
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a');
@@ -2419,6 +2657,7 @@ function wireGestao(){
   if($('#cgPrev'))$('#cgPrev').onclick=()=>cgShiftMes(-1); if($('#cgNext'))$('#cgNext').onclick=()=>cgShiftMes(1);
   if($('#cgVerVendas'))$('#cgVerVendas').onclick=simCarregarCenario;
   $('#cgTbl').addEventListener('click',cgCellClick);
+  wireCaixaModerno();
   if($('#slBM')){ $('#slBM').onchange=renderSimLan; $('#slBY').onchange=renderSimLan; $('#slSM').onchange=slResumoUpd; $('#slSY').onchange=slResumoUpd; $('#slN').oninput=slResumoUpd; $('#slGerar').onclick=simLanGerar; }
   $('#cadSubtabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$$('#cadSubtabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');CAD_SUB=b.dataset.s;renderCad();});
   $('#btnNovoCad').onclick=()=> (CAD_SUB==='usuarios' ? abrirNovoUsuario() : abrirFormCad());
