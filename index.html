@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
-<title>FCAH — Controle Financeiro (v2026-10-27a)</title>
+<title>FCAH — Controle Financeiro (v2026-10-28a)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -363,7 +363,7 @@ body.perm-no-impactos #impSalvar, body.perm-no-impactos #impSalvarComo, body.per
     <button type="button" class="nav-topico"><span>Cadastros</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 6 6 6-6 6"/></svg></button>
     <a data-v="cad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20.5c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5M16.5 11a3 3 0 0 0 0-6M21.5 20.5c0-2.8-1.7-5.2-4.2-6.2"/></svg><span>Cadastros e usuários</span></a>
   </div>
-  <div class="nav-foot" id="navFoot">v2026-10-27a · base FCAH</div>
+  <div class="nav-foot" id="navFoot">v2026-10-28a · base FCAH</div>
 </nav>
 <main class="content">
 
@@ -1232,6 +1232,8 @@ async function afterLogin(user){
   // sem nada no Financeiro: entra direto no Materiais (o próprio Materiais avisa se também não houver telas liberadas)
   if(!PERM.fin){ show2(document.querySelector('.modswitch [data-mod="mat"]'), true); abrirErp('/',null); }
   else if(nivelTela('fin.lancamentos')<1) switchView(viewInicial());
+  // vindo do portal IOT CITY com #materiais: abre direto o Materiais
+  if(PERM.fin && location.hash==='#materiais' && PERM.mat){ abrirErp('/',null); try{ history.replaceState(null,'',location.pathname); }catch(_){ } }
 }
 // seletor de empresa (só superadmin): troca a empresa em visualização
 function buildEmpSwitch(){ const sel=$('#empSwitch'); if(!sel)return;
